@@ -1,5 +1,5 @@
 import { getServerSession } from "next-auth";
-import { authOptions } from "../../auth/options";
+import { authOptions } from "../../auth/[...nextauth]/route";
 import { google } from "googleapis";
 
 export async function GET(req) {

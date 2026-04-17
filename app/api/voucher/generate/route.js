@@ -156,8 +156,7 @@ export async function POST(req) {
         .replace(/[ 	]+/g, " ")
         .split("\n").map(l => l.trim()).filter(l => l.length > 2)
         .slice(0, 40)
-        .join("
-");
+        .join("\n");
 
       // Brand bar
       rPage.drawRectangle({ x: ML, y: 60, width: 4, height: A4H - 32 - 80, color: accentColor });
