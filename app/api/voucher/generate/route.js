@@ -117,46 +117,78 @@ export async function POST(req) {
 
   // ── RECEIPT PAGES ────────────────────────────────────────────────
   for (const item of items) {
-    if (!item.receiptImage) continue;
-
-    // item.receiptImage is a base64 data URL: "data:image/jpeg;base64,..."
-    const [header, b64] = item.receiptImage.split(",");
-    const isJpeg = header.includes("jpeg") || header.includes("jpg");
-    const isPng  = header.includes("png");
-    if (!b64 || (!isJpeg && !isPng)) continue;
-
-    const imgBytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
-    let embeddedImg;
-    try {
-      embeddedImg = isJpeg
-        ? await pdfDoc.embedJpg(imgBytes)
-        : await pdfDoc.embedPng(imgBytes);
-    } catch(e) {
-      // Try the other format as fallback
-      try {
-        embeddedImg = isJpeg
-          ? await pdfDoc.embedPng(imgBytes)
-          : await pdfDoc.embedJpg(imgBytes);
-      } catch(e2) { continue; }
-    }
-
     const rPage = pdfDoc.addPage([A4W, A4H]);
 
-    // Header label
-    rPage.drawRectangle({ x: 0, y: A4H - 28, width: A4W, height: 28, color: navy });
-    rPage.drawText(`Receipt #${item.no}  |  ${pvNumber}  |  ${today}`, { x: ML, y: A4H - 20, size: 9, font: fontB, color: white });
-    rPage.drawText(`${item.desc}`, { x: ML, y: A4H - 20 - 11, size: 0, font: fontR, color: white });
+    // Navy header bar
+    rPage.drawRectangle({ x: 0, y: A4H - 32, width: A4W, height: 32, color: navy });
+    rPage.drawText(`Receipt #${item.no}  |  ${pvNumber}  |  ${today}`, { x: ML, y: A4H - 14, size: 9, font: fontB, color: white });
+    rPage.drawText(item.desc.slice(0, 80), { x: ML, y: A4H - 26, size: 7, font: fontR, color: rgb(0.7, 0.85, 1) });
 
-    // Fit image
-    const availW = A4W - ML - MR;
-    const availH = A4H - 28 - 20 - 20;
-    const imgDims = embeddedImg.scaleToFit(availW, availH);
-    const imgX = (A4W - imgDims.width) / 2;
-    const imgY = (A4H - 28 - 20 - imgDims.height) / 2;
-    rPage.drawImage(embeddedImg, { x: imgX, y: imgY, width: imgDims.width, height: imgDims.height });
+    if (item.receiptImage) {
+      // ── Uploaded image receipt ──
+      const [header, b64] = item.receiptImage.split(",");
+      const isJpeg = header.includes("jpeg") || header.includes("jpg");
+      const isPng  = header.includes("png");
+      if (b64 && (isJpeg || isPng)) {
+        const imgBytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+        let embeddedImg;
+        try {
+          embeddedImg = isJpeg ? await pdfDoc.embedJpg(imgBytes) : await pdfDoc.embedPng(imgBytes);
+        } catch(e) {
+          try { embeddedImg = isJpeg ? await pdfDoc.embedPng(imgBytes) : await pdfDoc.embedJpg(imgBytes); } catch(e2) {}
+        }
+        if (embeddedImg) {
+          const availW = A4W - ML - MR;
+          const availH = A4H - 32 - 30 - 20;
+          const imgDims = embeddedImg.scaleToFit(availW, availH);
+          const imgX = (A4W - imgDims.width) / 2;
+          const imgY = (A4H - 32 - 20 - imgDims.height) / 2;
+          rPage.drawImage(embeddedImg, { x: imgX, y: imgY, width: imgDims.width, height: imgDims.height });
+        }
+      }
+      rPage.drawText(`Source: ${item.receiptSource || "uploaded file"}`, { x: ML, y: 12, size: 6.5, font: fontR, color: gray });
+    } else {
+      // ── Text-based receipt (Gmail / manual) ──
+      const isGrab = item.desc.toLowerCase().includes("grab");
+      const isTada = item.desc.toLowerCase().includes("tada");
+      const accentColor = isTada ? rgb(0.05, 0.18, 0.24) : isGrab ? rgb(0, 0.69, 0.31) : navy;
 
-    // Footer
-    rPage.drawText(`Receipt sourced from: ${item.receiptSource || "uploaded file"}`, { x: ML, y: 12, size: 6.5, font: fontR, color: gray });
+      // Accent left bar
+      rPage.drawRectangle({ x: ML, y: 60, width: 3, height: A4H - 32 - 80, color: accentColor });
+
+      let ry = A4H - 60;
+      const fields = [
+        ["Date",         item.date],
+        ["Description",  item.desc],
+        ["Reference",    item.ref || "—"],
+        ["Amount",       item.orig || `SGD ${item.sgd.toFixed(2)}`],
+        ["SGD Equivalent", `SGD ${item.sgd.toFixed(2)}`],
+        ["Source",       item.receiptSource || "gmail"],
+      ];
+
+      for (const [label, value] of fields) {
+        // Label
+        rPage.drawText(label, { x: ML + 10, y: ry, size: 7.5, font: fontB, color: gray });
+        // Value - wrap long text
+        const maxChars = 80;
+        const lines = [];
+        let remaining = String(value);
+        while (remaining.length > 0) {
+          lines.push(remaining.slice(0, maxChars));
+          remaining = remaining.slice(maxChars);
+        }
+        for (let li = 0; li < lines.length; li++) {
+          rPage.drawText(lines[li], { x: ML + 10, y: ry - 12 - (li * 11), size: 9, font: fontR, color: black });
+        }
+        // Divider
+        const fieldH = 12 + (lines.length * 11) + 8;
+        rPage.drawLine({ start:{x: ML+10, y: ry - fieldH}, end:{x: A4W - MR, y: ry - fieldH}, thickness: 0.3, color: rgb(0.88,0.88,0.88) });
+        ry -= fieldH + 6;
+      }
+
+      // Bottom note
+      rPage.drawText(`Receipt from: ${item.receiptSource || "gmail"} — ${pvNumber}`, { x: ML, y: 12, size: 6.5, font: fontR, color: gray });
+    }
   }
 
   const pdfBytes = await pdfDoc.save();
