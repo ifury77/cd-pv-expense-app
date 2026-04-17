@@ -149,15 +149,12 @@ export async function POST(req) {
       const rawText = item.receiptHtml
         .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
         .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
-        .replace(/<br\s*\/?>/gi, "
-")
-        .replace(/<\/(?:div|p|tr|li|h[1-6])[^>]*>/gi, "
-")
+        .replace(/<br\s*\/?>/gi, "\n")
+        .replace(/<\/(?:div|p|tr|li|h[1-6])[^>]*>/gi, "\n")
         .replace(/<[^>]+>/g, " ")
         .replace(/&amp;/g, "&").replace(/&nbsp;/g, " ").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&#39;/g, "'").replace(/&copy;/g, "©")
         .replace(/[ 	]+/g, " ")
-        .split("
-").map(l => l.trim()).filter(l => l.length > 2)
+        .split("\n").map(l => l.trim()).filter(l => l.length > 2)
         .slice(0, 40)
         .join("
 ");
@@ -167,8 +164,7 @@ export async function POST(req) {
 
       // Draw extracted text content
       let ry = A4H - 55;
-      const lines = rawText.split("
-").slice(0, 35);
+      const lines = rawText.split("\n").slice(0, 35);
       for (const line of lines) {
         if (ry < 40) break;
         const isAmount = /\d+\.\d{2}/.test(line) && (line.toLowerCase().includes("total") || line.toLowerCase().includes("paid") || line.toLowerCase().includes("sgd"));
