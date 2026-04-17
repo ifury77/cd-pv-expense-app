@@ -133,6 +133,7 @@ export default function Home() {
   if (!session) return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="bg-white rounded-2xl border border-gray-200 p-10 text-center max-w-sm w-full">
+        <img src="/redington-logo.png" alt="Redington" className="h-10 mx-auto mb-4" />
         <div className="text-2xl font-medium text-gray-900 mb-1">Payment Voucher</div>
         <div className="text-sm text-gray-400 mb-8">Redington ASEAN – Ivan Ong</div>
         <button onClick={() => signIn("google")} className="w-full flex items-center justify-center gap-2 border border-gray-200 rounded-xl px-4 py-2.5 text-sm font-medium hover:bg-gray-50 transition">
@@ -153,6 +154,7 @@ export default function Home() {
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
+            <img src="/redington-logo.png" alt="Redington" className="h-8 mb-1" />
             <h1 className="text-lg font-medium text-gray-900">Payment Voucher</h1>
             <p className="text-sm text-gray-400">Ivan Ong – Redington ASEAN</p>
           </div>
