@@ -22,7 +22,7 @@ export default function Home() {
   const [uploadingFor, setUploadingFor] = useState(null);
 
   // Add receipt form
-  const [addForm, setAddForm] = useState({ date:"", desc:"", ref:"", sgd:"", orig:"", currency:"SGD", image:null, imagePreview:null });
+  const [addForm, setAddForm] = useState({ date:"", desc:"", ref:"", sgd:"", orig:"", currency:"SGD", image:null, imagePreview:null, rateNote:null });
   const [extracting, setExtracting] = useState(false);
   const [extractMsg, setExtractMsg] = useState("");
 
@@ -51,9 +51,10 @@ export default function Home() {
         date:     d.date     || f.date,
         desc:     d.description || d.merchant || f.desc,
         ref:      d.reference || f.ref,
-        sgd:      d.currency === "SGD" ? (d.amount || f.sgd) : f.sgd,
-        orig:     d.orig_amount || (d.currency && d.amount ? `${d.currency} ${d.amount}` : f.orig),
+        sgd:      d.sgd_amount || f.sgd,
+        orig:     d.orig_amount_str || (d.currency && d.amount ? `${d.currency} ${d.amount}` : f.orig),
         currency: d.currency || f.currency,
+        rateNote: d.rate_note || null,
       }));
       setExtractMsg("✓ Receipt details extracted — please review and confirm");
     } catch(e) {
@@ -112,7 +113,7 @@ export default function Home() {
       receiptImage: image || null,
       receiptSource: "uploaded",
     }]);
-    setAddForm({ date:"", desc:"", ref:"", sgd:"", orig:"", currency:"SGD", image:null, imagePreview:null });
+    setAddForm({ date:"", desc:"", ref:"", sgd:"", orig:"", currency:"SGD", image:null, imagePreview:null, rateNote:null });
     setExtractMsg("");
     setTab("voucher");
   }
@@ -237,7 +238,7 @@ export default function Home() {
                         {it.receiptImage ? (
                           <div className="flex items-center justify-center gap-1">
                             <img src={it.receiptImage} alt="receipt" className="w-8 h-8 object-cover rounded border border-gray-200" />
-                            <button onClick={() => triggerAttach(i)} className="text-xs text-gray-400 hover:text-blue-500" title="Replace">↺</button>
+                            <button onClick={() => { setUploadingFor(i); attachInputRef.current.click(); }} className="text-xs text-gray-400 hover:text-blue-500" title="Replace">↺</button>
                           </div>
                         ) : (
                           <button onClick={() => triggerAttach(i)}
@@ -284,21 +285,35 @@ export default function Home() {
             <div className="text-sm font-medium text-gray-700 mb-4">Add new receipt</div>
 
             {/* Image upload — triggers AI extraction */}
-            <div onClick={() => fileInputRef.current.click()}
-              className="border-2 border-dashed border-gray-200 rounded-xl p-6 text-center cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition mb-4">
-              {addForm.imagePreview ? (
-                <div className="flex flex-col items-center gap-2">
-                  <img src={addForm.imagePreview} alt="preview" className="max-h-48 rounded-lg object-contain" />
-                  <span className="text-xs text-gray-400">Tap to change photo</span>
+            {addForm.imagePreview ? (
+              <div className="border-2 border-gray-200 rounded-xl p-4 text-center mb-4">
+                <img src={addForm.imagePreview} alt="preview" className="max-h-48 rounded-lg object-contain mx-auto mb-2" />
+                <div className="flex gap-2 justify-center">
+                  <button onClick={() => document.getElementById("cameraInput").click()}
+                    className="text-xs border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition">📷 Camera</button>
+                  <button onClick={() => fileInputRef.current.click()}
+                    className="text-xs border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition">🖼️ Library</button>
                 </div>
-              ) : (
-                <div className="flex flex-col items-center gap-3 py-4">
-                  <div className="text-4xl">📷</div>
-                  <div className="text-sm font-medium text-gray-700">Take photo or choose from gallery</div>
-                  <div className="text-xs text-gray-400">AI will automatically read and fill in the receipt details</div>
+              </div>
+            ) : (
+              <div className="mb-4">
+                <div className="text-xs text-gray-400 mb-2 text-center">AI will automatically read and fill in the receipt details</div>
+                <div className="grid grid-cols-2 gap-3">
+                  <button onClick={() => document.getElementById("cameraInput").click()}
+                    className="flex flex-col items-center gap-2 border-2 border-dashed border-gray-200 rounded-xl p-5 hover:border-blue-400 hover:bg-blue-50 transition">
+                    <span className="text-3xl">📷</span>
+                    <span className="text-sm font-medium text-gray-700">Camera</span>
+                    <span className="text-xs text-gray-400">Take new photo</span>
+                  </button>
+                  <button onClick={() => fileInputRef.current.click()}
+                    className="flex flex-col items-center gap-2 border-2 border-dashed border-gray-200 rounded-xl p-5 hover:border-blue-400 hover:bg-blue-50 transition">
+                    <span className="text-3xl">🖼️</span>
+                    <span className="text-sm font-medium text-gray-700">Photo Library</span>
+                    <span className="text-xs text-gray-400">Choose existing</span>
+                  </button>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
 
             {/* Extraction status */}
             {extracting && (
@@ -313,6 +328,13 @@ export default function Home() {
             {!extracting && extractMsg && (
               <div className={`text-sm mb-4 rounded-xl px-4 py-3 ${extractMsg.startsWith("✓") ? "bg-green-50 text-green-700" : "bg-yellow-50 text-yellow-700"}`}>
                 {extractMsg}
+              </div>
+            )}
+
+            {/* Exchange rate note */}
+            {addForm.rateNote && (
+              <div className="text-xs bg-amber-50 text-amber-700 rounded-xl px-4 py-2 mb-3 flex items-center gap-2">
+                <span>💱</span> {addForm.rateNote}
               </div>
             )}
 
