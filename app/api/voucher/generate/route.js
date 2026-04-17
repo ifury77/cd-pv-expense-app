@@ -1,14 +1,6 @@
 import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
 
-export const config = {
-  api: {
-    bodyParser: {
-      sizeLimit: "20mb",
-    },
-  },
-};
-
-export const maxDuration = 30;
+export const maxDuration = 60;
 
 function amountInWords(amount) {
   const ones = ["","One","Two","Three","Four","Five","Six","Seven","Eight","Nine",
