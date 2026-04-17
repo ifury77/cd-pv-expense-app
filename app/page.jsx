@@ -214,69 +214,120 @@ export default function Home() {
         {tab === "voucher" && (
           <>
             <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden mb-4">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="bg-gray-50 border-b border-gray-100">
-                    <th className="text-left px-3 py-2.5 text-xs font-medium text-gray-400 w-8">#</th>
-                    <th className="text-left px-3 py-2.5 text-xs font-medium text-gray-400 w-24">Date</th>
-                    <th className="text-left px-3 py-2.5 text-xs font-medium text-gray-400">Description</th>
-                    <th className="text-left px-3 py-2.5 text-xs font-medium text-gray-400 w-32">Reference</th>
-                    <th className="text-right px-3 py-2.5 text-xs font-medium text-gray-400 w-20">SGD</th>
-                    <th className="text-center px-3 py-2.5 text-xs font-medium text-gray-400 w-20">Receipt</th>
-                    <th className="w-8"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {items.map((it, i) => (
-                    <tr key={i} className="border-b border-gray-50 hover:bg-gray-50 transition">
-                      <td className="px-3 py-2 text-gray-400 text-xs">{it.no}</td>
-                      <td className="px-3 py-2 text-gray-600 text-xs whitespace-nowrap">{it.date}</td>
-                      <td className="px-3 py-2 text-gray-800 text-sm">{it.desc}</td>
-                      <td className="px-3 py-2 text-gray-400 font-mono text-xs">{it.ref}</td>
-                      <td className="px-3 py-2 text-right font-medium tabular-nums">{it.sgd.toFixed(2)}</td>
-                      <td className="px-3 py-2 text-center">
-                        {it.receiptImage ? (
-                          <div className="flex items-center justify-center gap-1">
-                            <img src={it.receiptImage} alt="receipt" className="w-8 h-8 object-cover rounded border border-gray-200" />
-                            <div className="relative text-xs text-gray-400 hover:text-blue-500 cursor-pointer overflow-hidden" title="Replace">
-                          ↺
-                          <input type="file" accept="image/*" onChange={(e) => { setUploadingFor(i); handleAttachFile(e); }}
-                            style={{position:"absolute",top:0,left:0,width:"100%",height:"100%",opacity:0,cursor:"pointer"}} />
+              {/* Desktop table - hidden on mobile */}
+              <div className="hidden md:block">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-gray-50 border-b border-gray-100">
+                      <th className="text-left px-3 py-2.5 text-xs font-medium text-gray-400 w-8">#</th>
+                      <th className="text-left px-3 py-2.5 text-xs font-medium text-gray-400 w-24">Date</th>
+                      <th className="text-left px-3 py-2.5 text-xs font-medium text-gray-400">Description</th>
+                      <th className="text-left px-3 py-2.5 text-xs font-medium text-gray-400 w-32">Reference</th>
+                      <th className="text-right px-3 py-2.5 text-xs font-medium text-gray-400 w-20">SGD</th>
+                      <th className="text-center px-3 py-2.5 text-xs font-medium text-gray-400 w-20">Receipt</th>
+                      <th className="w-8"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {items.map((it, i) => (
+                      <tr key={i} className="border-b border-gray-50 hover:bg-gray-50 transition">
+                        <td className="px-3 py-2 text-gray-400 text-xs">{it.no}</td>
+                        <td className="px-3 py-2 text-gray-600 text-xs whitespace-nowrap">{it.date}</td>
+                        <td className="px-3 py-2 text-gray-800 text-sm">{it.desc}</td>
+                        <td className="px-3 py-2 text-gray-400 font-mono text-xs">{it.ref}</td>
+                        <td className="px-3 py-2 text-right font-medium tabular-nums">{it.sgd.toFixed(2)}</td>
+                        <td className="px-3 py-2 text-center">
+                          {it.receiptImage ? (
+                            <div className="flex items-center justify-center gap-1">
+                              <img src={it.receiptImage} alt="receipt" className="w-8 h-8 object-cover rounded border border-gray-200" />
+                              <div className="relative text-xs text-gray-400 hover:text-blue-500 cursor-pointer overflow-hidden" title="Replace">
+                                ↺
+                                <input type="file" accept="image/*" onChange={(e) => { setUploadingFor(i); handleAttachFile(e); }}
+                                  style={{position:"absolute",top:0,left:0,width:"100%",height:"100%",opacity:0,cursor:"pointer"}} />
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="relative text-xs border border-dashed border-gray-300 rounded px-2 py-1 text-gray-400 hover:border-blue-400 hover:text-blue-500 transition cursor-pointer overflow-hidden">
+                              + photo
+                              <input type="file" accept="image/*" onChange={(e) => { setUploadingFor(i); handleAttachFile(e); }}
+                                style={{position:"absolute",top:0,left:0,width:"100%",height:"100%",opacity:0,cursor:"pointer"}} />
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-2 py-2">
+                          <button onClick={() => removeItem(i)} className="text-gray-300 hover:text-red-400 transition text-xs">✕</button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr className="bg-slate-800">
+                      <td colSpan="5" className="px-3 py-2.5 text-right text-xs font-medium text-white">TOTAL SGD</td>
+                      <td className="px-3 py-2.5 text-right text-sm font-medium text-white tabular-nums">{total.toFixed(2)}</td>
+                      <td></td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+
+              {/* Mobile cards - shown only on small screens */}
+              <div className="md:hidden divide-y divide-gray-50">
+                {items.map((it, i) => (
+                  <div key={i} className="p-4">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-start gap-3 flex-1 min-w-0">
+                        <span className="text-xs text-gray-400 mt-0.5 w-4 flex-shrink-0">{it.no}</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-medium text-gray-900 leading-snug">{it.desc}</div>
+                          <div className="flex items-center gap-2 mt-1 flex-wrap">
+                            <span className="text-xs text-gray-400">{it.date}</span>
+                            {it.ref && it.ref !== "—" && (
+                              <span className="text-xs text-gray-400 font-mono truncate max-w-32">{it.ref}</span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-3 mt-2">
+                            <span className="text-base font-semibold text-gray-900">SGD {it.sgd.toFixed(2)}</span>
+                            {it.orig && it.orig !== `SGD ${it.sgd.toFixed(2)}` && (
+                              <span className="text-xs text-gray-400">({it.orig})</span>
+                            )}
+                          </div>
                         </div>
+                      </div>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        {it.receiptImage ? (
+                          <div className="relative overflow-hidden rounded border border-gray-200">
+                            <img src={it.receiptImage} alt="receipt" className="w-10 h-10 object-cover" />
+                            <input type="file" accept="image/*" onChange={(e) => { setUploadingFor(i); handleAttachFile(e); }}
+                              style={{position:"absolute",top:0,left:0,width:"100%",height:"100%",opacity:0,cursor:"pointer"}} />
                           </div>
                         ) : (
-                          <div className="relative text-xs border border-dashed border-gray-300 rounded px-2 py-1 text-gray-400 hover:border-blue-400 hover:text-blue-500 transition cursor-pointer overflow-hidden">
-                            + photo
+                          <div className="relative overflow-hidden border border-dashed border-gray-300 rounded px-2 py-1.5 text-gray-400 cursor-pointer">
+                            <span className="text-xs">📎</span>
                             <input type="file" accept="image/*" onChange={(e) => { setUploadingFor(i); handleAttachFile(e); }}
                               style={{position:"absolute",top:0,left:0,width:"100%",height:"100%",opacity:0,cursor:"pointer"}} />
                           </div>
                         )}
-                      </td>
-                      <td className="px-2 py-2">
-                        <button onClick={() => removeItem(i)} className="text-gray-300 hover:text-red-400 transition text-xs">✕</button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-                <tfoot>
-                  <tr className="bg-slate-800">
-                    <td colSpan="5" className="px-3 py-2.5 text-right text-xs font-medium text-white">TOTAL SGD</td>
-                    <td className="px-3 py-2.5 text-right text-sm font-medium text-white tabular-nums">{total.toFixed(2)}</td>
-                    <td></td>
-                  </tr>
-                </tfoot>
-              </table>
+                        <button onClick={() => removeItem(i)} className="text-gray-300 hover:text-red-400 transition p-1">✕</button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                <div className="bg-slate-800 px-4 py-3 flex justify-between items-center">
+                  <span className="text-xs font-medium text-white">TOTAL SGD</span>
+                  <span className="text-base font-semibold text-white tabular-nums">{total.toFixed(2)}</span>
+                </div>
+              </div>
             </div>
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <div className="text-xs text-gray-400">Running total</div>
                 <div className="text-2xl font-medium text-gray-900">SGD {total.toFixed(2)}</div>
                 <div className="text-xs text-gray-400 mt-1">{items.filter(i=>i.receiptImage).length}/{items.length} receipts attached</div>
               </div>
-              <div className="flex gap-2 flex-wrap justify-end">
-                <button onClick={() => setTab("search")} className="border border-gray-200 rounded-xl px-4 py-2 text-sm font-medium hover:bg-gray-50 transition">Search Gmail</button>
-                <button onClick={() => setTab("add")} className="border border-gray-200 rounded-xl px-4 py-2 text-sm font-medium hover:bg-gray-50 transition">+ Add Receipt</button>
-                <button onClick={generatePDF} disabled={generating} className="bg-gray-900 text-white rounded-xl px-5 py-2 text-sm font-medium hover:bg-gray-700 transition disabled:opacity-50">
+              <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-row">
+                <button onClick={() => setTab("search")} className="border border-gray-200 rounded-xl px-4 py-2.5 text-sm font-medium hover:bg-gray-50 transition text-center">Search Gmail</button>
+                <button onClick={() => setTab("add")} className="border border-gray-200 rounded-xl px-4 py-2.5 text-sm font-medium hover:bg-gray-50 transition text-center">+ Add Receipt</button>
+                <button onClick={generatePDF} disabled={generating} className="col-span-2 sm:col-span-1 bg-gray-900 text-white rounded-xl px-5 py-2.5 text-sm font-medium hover:bg-gray-700 transition disabled:opacity-50 text-center">
                   {generating ? "Generating..." : "Download PDF"}
                 </button>
               </div>
