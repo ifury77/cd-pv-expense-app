@@ -19,6 +19,26 @@ function amountInWords(amount) {
   return "Singapore " + words + " Only";
 }
 
+function stripHtml(html) {
+  return html
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
+    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/(?:div|p|tr|li|h[1-6])[^>]*>/gi, "\n")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&#39;/g, "'")
+    .replace(/&copy;/g, "(c)")
+    .replace(/[ \t]+/g, " ")
+    .split("\n")
+    .map(l => l.trim())
+    .filter(l => l.length > 1)
+    .join("\n");
+}
+
 export async function POST(req) {
   const { items, pvNumber = "PV4" } = await req.json();
   const pdfDoc = await PDFDocument.create();
@@ -27,7 +47,7 @@ export async function POST(req) {
   const A4W = 595.28, A4H = 841.89;
   const ML = 20, MR = 20, MT = 20;
 
-  // ── PAGE 1: Voucher ──────────────────────────────────────────────
+  // PAGE 1: Voucher
   const page = pdfDoc.addPage([A4W, A4H]);
   const navy  = rgb(0.12, 0.30, 0.47);
   const white = rgb(1, 1, 1);
@@ -67,12 +87,12 @@ export async function POST(req) {
     page.drawRectangle({ x: ML, y: y - rowH, width: A4W-ML-MR, height: rowH, color: bg });
     page.drawRectangle({ x: ML, y: y - rowH, width: A4W-ML-MR, height: rowH, borderColor: rgb(0.74,0.84,0.93), borderWidth: 0.3 });
     const vals = [
-      { text: String(item.no),                       col: cols[0], align: "center" },
-      { text: item.date,                              col: cols[1], align: "left"   },
-      { text: (item.desc||"").slice(0,52),            col: cols[2], align: "left"   },
-      { text: (item.ref||"").slice(0,18),             col: cols[3], align: "left"   },
-      { text: item.orig || `SGD ${item.sgd.toFixed(2)}`, col: cols[4], align: "right" },
-      { text: item.sgd.toFixed(2),                   col: cols[5], align: "right"  },
+      { text: String(item.no),                            col: cols[0], align: "center" },
+      { text: item.date,                                  col: cols[1], align: "left"   },
+      { text: (item.desc||"").slice(0,52),                col: cols[2], align: "left"   },
+      { text: (item.ref||"").slice(0,18),                 col: cols[3], align: "left"   },
+      { text: item.orig || `SGD ${item.sgd.toFixed(2)}`,  col: cols[4], align: "right"  },
+      { text: item.sgd.toFixed(2),                        col: cols[5], align: "right"  },
     ];
     vals.forEach(({ text, col, align }) => {
       let tx = col.x + 2;
@@ -89,13 +109,11 @@ export async function POST(req) {
     page.drawRectangle({ x: ML, y: y - rowH, width: A4W-ML-MR, height: rowH, color: bg });
     page.drawRectangle({ x: ML, y: y - rowH, width: A4W-ML-MR, height: rowH, borderColor: rgb(0.74,0.84,0.93), borderWidth: 0.3 });
   }
-
   y -= rowH;
   page.drawRectangle({ x: ML, y: y - rowH, width: A4W-ML-MR, height: rowH, color: navy });
   page.drawText("TOTAL SGD", { x: cols[4].x + 2, y: y - rowH + 6, size: 7, font: fontB, color: white });
   const totalStr = total.toFixed(2);
   page.drawText(totalStr, { x: cols[5].x + cols[5].w - fontB.widthOfTextAtSize(totalStr, 7) - 2, y: y - rowH + 6, size: 7, font: fontB, color: white });
-
   y -= rowH + 10;
   page.drawText(`Amount in Words: ${amountInWords(total)}`, { x: ML, y, size: 7.5, font: fontB, color: black });
   y -= 14;
@@ -107,21 +125,26 @@ export async function POST(req) {
   page.drawText("Prepared by / Claimant", { x: ML, y, size: 7, font: fontR, color: gray });
   page.drawText("Approved by", { x: A4W/2, y, size: 7, font: fontR, color: gray });
 
-  // ── RECEIPT PAGES ────────────────────────────────────────────────
+  // RECEIPT PAGES
   for (const item of items) {
     const rPage = pdfDoc.addPage([A4W, A4H]);
 
-    // Navy header bar
+    // Detect brand colours
+    const isGrab = (item.desc||"").toLowerCase().includes("grab");
+    const isTada = (item.desc||"").toLowerCase().includes("tada");
+    const brandColor = isTada ? rgb(0.05, 0.18, 0.24) : isGrab ? rgb(0, 0.69, 0.31) : navy;
+
+    // Navy header
     rPage.drawRectangle({ x: 0, y: A4H - 32, width: A4W, height: 32, color: navy });
     rPage.drawText(`Receipt #${item.no}  |  ${pvNumber}  |  ${today}`, { x: ML, y: A4H - 14, size: 9, font: fontB, color: white });
-    rPage.drawText(item.desc.slice(0, 80), { x: ML, y: A4H - 26, size: 7, font: fontR, color: rgb(0.7, 0.85, 1) });
+    const descPreview = (item.desc||"").slice(0, 80);
+    rPage.drawText(descPreview, { x: ML, y: A4H - 26, size: 7, font: fontR, color: rgb(0.7, 0.85, 1) });
 
     if (item.receiptImage) {
-      // ── Uploaded image receipt ──
+      // Uploaded photo
       const [header, b64] = item.receiptImage.split(",");
       const isJpeg = header.includes("jpeg") || header.includes("jpg");
-      const isPng  = header.includes("png");
-      if (b64 && (isJpeg || isPng)) {
+      if (b64 && (isJpeg || header.includes("png"))) {
         const imgBytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
         let embeddedImg;
         try {
@@ -131,86 +154,73 @@ export async function POST(req) {
         }
         if (embeddedImg) {
           const availW = A4W - ML - MR;
-          const availH = A4H - 32 - 30 - 20;
-          const imgDims = embeddedImg.scaleToFit(availW, availH);
-          const imgX = (A4W - imgDims.width) / 2;
-          const imgY = (A4H - 32 - 20 - imgDims.height) / 2;
-          rPage.drawImage(embeddedImg, { x: imgX, y: imgY, width: imgDims.width, height: imgDims.height });
+          const availH = A4H - 32 - 30;
+          const dims = embeddedImg.scaleToFit(availW, availH);
+          rPage.drawImage(embeddedImg, { x: (A4W - dims.width)/2, y: (A4H - 32 - dims.height)/2, width: dims.width, height: dims.height });
         }
       }
-      rPage.drawText(`Source: ${item.receiptSource || "uploaded file"}`, { x: ML, y: 12, size: 6.5, font: fontR, color: gray });
-    } else if (item.receiptHtml) {
-      // ── Gmail HTML receipt — render key fields extracted from HTML ──
-      const isGrab = item.desc.toLowerCase().includes("grab");
-      const isTada = item.desc.toLowerCase().includes("tada");
-      const accentColor = isTada ? rgb(0.05, 0.18, 0.24) : isGrab ? rgb(0, 0.69, 0.31) : navy;
-
-      // Strip HTML tags and extract readable text
-      const rawText = item.receiptHtml
-        .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
-        .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
-        .replace(/<br\s*\/?>/gi, "\n")
-        .replace(/<\/(?:div|p|tr|li|h[1-6])[^>]*>/gi, "\n")
-        .replace(/<[^>]+>/g, " ")
-        .replace(/&amp;/g, "&").replace(/&nbsp;/g, " ").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&#39;/g, "'").replace(/&copy;/g, "©")
-        .replace(/[ 	]+/g, " ")
-        .split("\n").map(l => l.trim()).filter(l => l.length > 2)
-        .slice(0, 40)
-        .join("\n");
-
-      // Brand bar
-      rPage.drawRectangle({ x: ML, y: 60, width: 4, height: A4H - 32 - 80, color: accentColor });
-
-      // Draw extracted text content
-      let ry = A4H - 55;
-      const lines = rawText.split("\n").slice(0, 35);
-      for (const line of lines) {
-        if (ry < 40) break;
-        const isAmount = /\d+\.\d{2}/.test(line) && (line.toLowerCase().includes("total") || line.toLowerCase().includes("paid") || line.toLowerCase().includes("sgd"));
-        const isLabel  = line.length < 40 && !line.includes(" ") === false && line === line.toUpperCase();
-        const fSize    = isAmount ? 10 : 8;
-        const fFont    = isAmount ? fontB : fontR;
-        const fColor   = isAmount ? black : isLabel ? gray : black;
-        // Truncate long lines
-        const maxW     = A4W - ML - MR - 20;
-        let display    = line;
-        while (display.length > 1 && fontR.widthOfTextAtSize(display, fSize) > maxW) {
-          display = display.slice(0, -1);
-        }
-        rPage.drawText(display, { x: ML + 12, y: ry, size: fSize, font: fFont, color: fColor });
-        ry -= fSize + 5;
-      }
-
-      rPage.drawText(`Gmail receipt — ${item.receiptSource || "sgp69k@gmail.com"} — ${pvNumber}`, { x: ML, y: 12, size: 6.5, font: fontR, color: gray });
+      rPage.drawText(`Source: ${item.receiptSource || "uploaded"}`, { x: ML, y: 12, size: 6.5, font: fontR, color: gray });
 
     } else {
-      // ── Manual entry receipt — styled summary card ──
-      const accentColor = navy;
-      rPage.drawRectangle({ x: ML, y: 60, width: 4, height: A4H - 32 - 80, color: accentColor });
+      // Gmail or manual — render as a styled receipt card
+      rPage.drawRectangle({ x: ML, y: 50, width: 4, height: A4H - 32 - 70, color: brandColor });
 
-      let ry = A4H - 60;
-      const fields = [
-        ["Date",           item.date],
-        ["Description",    item.desc],
-        ["Reference",      item.ref || "—"],
-        ["Amount",         item.orig || `SGD ${item.sgd.toFixed(2)}`],
-        ["SGD Equivalent", `SGD ${item.sgd.toFixed(2)}`],
-      ];
-
-      for (const [label, value] of fields) {
-        rPage.drawText(label, { x: ML + 10, y: ry, size: 7.5, font: fontB, color: gray });
-        const maxChars = 80;
-        const lines = [];
-        let remaining = String(value);
-        while (remaining.length > 0) { lines.push(remaining.slice(0, maxChars)); remaining = remaining.slice(maxChars); }
-        for (let li = 0; li < lines.length; li++) {
-          rPage.drawText(lines[li], { x: ML + 10, y: ry - 13 - (li * 12), size: 10, font: li === 0 ? fontB : fontR, color: black });
-        }
-        const fieldH = 13 + (lines.length * 12) + 10;
-        rPage.drawLine({ start:{x: ML+10, y: ry - fieldH}, end:{x: A4W-MR, y: ry - fieldH}, thickness: 0.3, color: rgb(0.88,0.88,0.88) });
-        ry -= fieldH + 4;
+      // Get text lines from HTML or item data
+      let lines = [];
+      if (item.receiptHtml) {
+        const rawText = stripHtml(item.receiptHtml);
+        lines = rawText.split("\n")
+          .filter(l => l.length > 1 && l.length < 200)
+          // Remove lines that are just URLs, tracking pixels, social links
+          .filter(l => !l.match(/^https?:\/\//i))
+          .filter(l => !l.match(/^(follow us|unsubscribe|privacy|copyright|©)/i))
+          .slice(0, 40);
+      } else {
+        // Manual entry
+        lines = [
+          `Date: ${item.date}`,
+          `Description: ${item.desc}`,
+          `Reference: ${item.ref || "—"}`,
+          `Amount: ${item.orig || "SGD " + item.sgd.toFixed(2)}`,
+          `SGD Equivalent: SGD ${item.sgd.toFixed(2)}`,
+        ];
       }
-      rPage.drawText(`Manual entry — ${pvNumber}`, { x: ML, y: 12, size: 6.5, font: fontR, color: gray });
+
+      let ry = A4H - 50;
+      const maxW = A4W - ML - MR - 20;
+
+      for (const line of lines) {
+        if (ry < 55) break;
+
+        // Detect if line is a key value (amount, total, booking ID etc)
+        const isTotal   = /total|paid|charged|amount/i.test(line) && /\d+\.\d{2}/.test(line);
+        const isHeading = line.length < 30 && /^[A-Z][^a-z]{3,}$/.test(line.trim());
+        const isAmount  = /^\d+\.\d{2}\s*(SGD|MYR|IDR|THB|USD)?$/i.test(line.trim());
+
+        const fSize  = isTotal ? 11 : isHeading ? 9 : isAmount ? 10 : 8;
+        const fFont  = (isTotal || isHeading || isAmount) ? fontB : fontR;
+        const fColor = isTotal ? brandColor : isHeading ? gray : black;
+
+        // Truncate to fit width
+        let display = line;
+        while (display.length > 2 && fontR.widthOfTextAtSize(display, fSize) > maxW) {
+          display = display.slice(0, -1);
+        }
+        if (display !== line) display += "…";
+
+        rPage.drawText(display, { x: ML + 10, y: ry, size: fSize, font: fFont, color: fColor });
+
+        // Divider after key lines
+        if (isTotal || isHeading) {
+          rPage.drawLine({ start:{x: ML+10, y: ry - fSize - 2}, end:{x: A4W-MR, y: ry - fSize - 2}, thickness: 0.3, color: rgb(0.88,0.88,0.88) });
+          ry -= fSize + 8;
+        } else {
+          ry -= fSize + 4;
+        }
+      }
+
+      const sourceLabel = item.receiptHtml ? `Gmail receipt — ${item.receiptSource || "sgp69k@gmail.com"}` : `Manual entry`;
+      rPage.drawText(`${sourceLabel} — ${pvNumber}`, { x: ML, y: 12, size: 6.5, font: fontR, color: gray });
     }
   }
 
