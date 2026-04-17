@@ -139,47 +139,83 @@ export async function POST(req) {
         }
       }
       rPage.drawText(`Source: ${item.receiptSource || "uploaded file"}`, { x: ML, y: 12, size: 6.5, font: fontR, color: gray });
-    } else {
-      // ── Text-based receipt (Gmail / manual) ──
+    } else if (item.receiptHtml) {
+      // ── Gmail HTML receipt — render key fields extracted from HTML ──
       const isGrab = item.desc.toLowerCase().includes("grab");
       const isTada = item.desc.toLowerCase().includes("tada");
       const accentColor = isTada ? rgb(0.05, 0.18, 0.24) : isGrab ? rgb(0, 0.69, 0.31) : navy;
 
-      // Accent left bar
-      rPage.drawRectangle({ x: ML, y: 60, width: 3, height: A4H - 32 - 80, color: accentColor });
+      // Strip HTML tags and extract readable text
+      const rawText = item.receiptHtml
+        .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
+        .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
+        .replace(/<br\s*\/?>/gi, "
+")
+        .replace(/<\/(?:div|p|tr|li|h[1-6])[^>]*>/gi, "
+")
+        .replace(/<[^>]+>/g, " ")
+        .replace(/&amp;/g, "&").replace(/&nbsp;/g, " ").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&#39;/g, "'").replace(/&copy;/g, "©")
+        .replace(/[ 	]+/g, " ")
+        .split("
+").map(l => l.trim()).filter(l => l.length > 2)
+        .slice(0, 40)
+        .join("
+");
+
+      // Brand bar
+      rPage.drawRectangle({ x: ML, y: 60, width: 4, height: A4H - 32 - 80, color: accentColor });
+
+      // Draw extracted text content
+      let ry = A4H - 55;
+      const lines = rawText.split("
+").slice(0, 35);
+      for (const line of lines) {
+        if (ry < 40) break;
+        const isAmount = /\d+\.\d{2}/.test(line) && (line.toLowerCase().includes("total") || line.toLowerCase().includes("paid") || line.toLowerCase().includes("sgd"));
+        const isLabel  = line.length < 40 && !line.includes(" ") === false && line === line.toUpperCase();
+        const fSize    = isAmount ? 10 : 8;
+        const fFont    = isAmount ? fontB : fontR;
+        const fColor   = isAmount ? black : isLabel ? gray : black;
+        // Truncate long lines
+        const maxW     = A4W - ML - MR - 20;
+        let display    = line;
+        while (display.length > 1 && fontR.widthOfTextAtSize(display, fSize) > maxW) {
+          display = display.slice(0, -1);
+        }
+        rPage.drawText(display, { x: ML + 12, y: ry, size: fSize, font: fFont, color: fColor });
+        ry -= fSize + 5;
+      }
+
+      rPage.drawText(`Gmail receipt — ${item.receiptSource || "sgp69k@gmail.com"} — ${pvNumber}`, { x: ML, y: 12, size: 6.5, font: fontR, color: gray });
+
+    } else {
+      // ── Manual entry receipt — styled summary card ──
+      const accentColor = navy;
+      rPage.drawRectangle({ x: ML, y: 60, width: 4, height: A4H - 32 - 80, color: accentColor });
 
       let ry = A4H - 60;
       const fields = [
-        ["Date",         item.date],
-        ["Description",  item.desc],
-        ["Reference",    item.ref || "—"],
-        ["Amount",       item.orig || `SGD ${item.sgd.toFixed(2)}`],
+        ["Date",           item.date],
+        ["Description",    item.desc],
+        ["Reference",      item.ref || "—"],
+        ["Amount",         item.orig || `SGD ${item.sgd.toFixed(2)}`],
         ["SGD Equivalent", `SGD ${item.sgd.toFixed(2)}`],
-        ["Source",       item.receiptSource || "gmail"],
       ];
 
       for (const [label, value] of fields) {
-        // Label
         rPage.drawText(label, { x: ML + 10, y: ry, size: 7.5, font: fontB, color: gray });
-        // Value - wrap long text
         const maxChars = 80;
         const lines = [];
         let remaining = String(value);
-        while (remaining.length > 0) {
-          lines.push(remaining.slice(0, maxChars));
-          remaining = remaining.slice(maxChars);
-        }
+        while (remaining.length > 0) { lines.push(remaining.slice(0, maxChars)); remaining = remaining.slice(maxChars); }
         for (let li = 0; li < lines.length; li++) {
-          rPage.drawText(lines[li], { x: ML + 10, y: ry - 12 - (li * 11), size: 9, font: fontR, color: black });
+          rPage.drawText(lines[li], { x: ML + 10, y: ry - 13 - (li * 12), size: 10, font: li === 0 ? fontB : fontR, color: black });
         }
-        // Divider
-        const fieldH = 12 + (lines.length * 11) + 8;
-        rPage.drawLine({ start:{x: ML+10, y: ry - fieldH}, end:{x: A4W - MR, y: ry - fieldH}, thickness: 0.3, color: rgb(0.88,0.88,0.88) });
-        ry -= fieldH + 6;
+        const fieldH = 13 + (lines.length * 12) + 10;
+        rPage.drawLine({ start:{x: ML+10, y: ry - fieldH}, end:{x: A4W-MR, y: ry - fieldH}, thickness: 0.3, color: rgb(0.88,0.88,0.88) });
+        ry -= fieldH + 4;
       }
-
-      // Bottom note
-      rPage.drawText(`Receipt from: ${item.receiptSource || "gmail"} — ${pvNumber}`, { x: ML, y: 12, size: 6.5, font: fontR, color: gray });
+      rPage.drawText(`Manual entry — ${pvNumber}`, { x: ML, y: 12, size: 6.5, font: fontR, color: gray });
     }
   }
 
