@@ -238,13 +238,18 @@ export default function Home() {
                         {it.receiptImage ? (
                           <div className="flex items-center justify-center gap-1">
                             <img src={it.receiptImage} alt="receipt" className="w-8 h-8 object-cover rounded border border-gray-200" />
-                            <label htmlFor="attachGalleryInput" onClick={() => setUploadingFor(i)} className="text-xs text-gray-400 hover:text-blue-500 cursor-pointer" title="Replace">↺</label>
+                            <div className="relative text-xs text-gray-400 hover:text-blue-500 cursor-pointer overflow-hidden" title="Replace">
+                          ↺
+                          <input type="file" accept="image/*" onChange={(e) => { setUploadingFor(i); handleAttachFile(e); }}
+                            style={{position:"absolute",top:0,left:0,width:"100%",height:"100%",opacity:0,cursor:"pointer"}} />
+                        </div>
                           </div>
                         ) : (
-                          <label htmlFor="attachGalleryInput" onClick={() => setUploadingFor(i)}
-                            className="text-xs border border-dashed border-gray-300 rounded px-2 py-1 text-gray-400 hover:border-blue-400 hover:text-blue-500 transition cursor-pointer">
+                          <div className="relative text-xs border border-dashed border-gray-300 rounded px-2 py-1 text-gray-400 hover:border-blue-400 hover:text-blue-500 transition cursor-pointer overflow-hidden">
                             + photo
-                          </label>
+                            <input type="file" accept="image/*" onChange={(e) => { setUploadingFor(i); handleAttachFile(e); }}
+                              style={{position:"absolute",top:0,left:0,width:"100%",height:"100%",opacity:0,cursor:"pointer"}} />
+                          </div>
                         )}
                       </td>
                       <td className="px-2 py-2">
@@ -289,28 +294,36 @@ export default function Home() {
               <div className="border-2 border-gray-200 rounded-xl p-4 text-center mb-4">
                 <img src={addForm.imagePreview} alt="preview" className="max-h-48 rounded-lg object-contain mx-auto mb-2" />
                 <div className="flex gap-2 justify-center">
-                  <label htmlFor="cameraInput"
-                    className="text-xs border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition cursor-pointer">📷 Camera</label>
-                  <label htmlFor="galleryInput"
-                    className="text-xs border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition cursor-pointer">🖼️ Library</label>
+                  <div className="relative text-xs border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition cursor-pointer overflow-hidden">
+                    📷 Camera
+                    <input type="file" accept="image/*" capture="environment" onChange={handleNewReceiptFile}
+                      style={{position:"absolute",top:0,left:0,width:"100%",height:"100%",opacity:0,cursor:"pointer"}} />
+                  </div>
+                  <div className="relative text-xs border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition cursor-pointer overflow-hidden">
+                    🖼️ Library
+                    <input type="file" accept="image/*" onChange={handleNewReceiptFile}
+                      style={{position:"absolute",top:0,left:0,width:"100%",height:"100%",opacity:0,cursor:"pointer"}} />
+                  </div>
                 </div>
               </div>
             ) : (
               <div className="mb-4">
                 <div className="text-xs text-gray-400 mb-2 text-center">AI will automatically read and fill in the receipt details</div>
                 <div className="grid grid-cols-2 gap-3">
-                  <label htmlFor="cameraInput"
-                    className="flex flex-col items-center gap-2 border-2 border-dashed border-gray-200 rounded-xl p-5 hover:border-blue-400 hover:bg-blue-50 transition cursor-pointer">
+                  <div className="relative flex flex-col items-center gap-2 border-2 border-dashed border-gray-200 rounded-xl p-5 hover:border-blue-400 hover:bg-blue-50 transition cursor-pointer overflow-hidden">
                     <span className="text-3xl">📷</span>
                     <span className="text-sm font-medium text-gray-700">Camera</span>
                     <span className="text-xs text-gray-400">Take new photo</span>
-                  </label>
-                  <label htmlFor="galleryInput"
-                    className="flex flex-col items-center gap-2 border-2 border-dashed border-gray-200 rounded-xl p-5 hover:border-blue-400 hover:bg-blue-50 transition cursor-pointer">
+                    <input type="file" accept="image/*" capture="environment" onChange={handleNewReceiptFile}
+                      style={{position:"absolute",top:0,left:0,width:"100%",height:"100%",opacity:0,cursor:"pointer"}} />
+                  </div>
+                  <div className="relative flex flex-col items-center gap-2 border-2 border-dashed border-gray-200 rounded-xl p-5 hover:border-blue-400 hover:bg-blue-50 transition cursor-pointer overflow-hidden">
                     <span className="text-3xl">🖼️</span>
                     <span className="text-sm font-medium text-gray-700">Photo Library</span>
                     <span className="text-xs text-gray-400">Choose existing</span>
-                  </label>
+                    <input type="file" accept="image/*" onChange={handleNewReceiptFile}
+                      style={{position:"absolute",top:0,left:0,width:"100%",height:"100%",opacity:0,cursor:"pointer"}} />
+                  </div>
                 </div>
               </div>
             )}
