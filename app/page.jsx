@@ -1,5 +1,22 @@
 "use client";
 import { useState, useRef } from "react";
+
+// Compress image before sending to API
+async function compressImage(dataUrl, maxWidth = 1200, quality = 0.75) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      let w = img.width, h = img.height;
+      if (w > maxWidth) { h = Math.round(h * maxWidth / w); w = maxWidth; }
+      canvas.width = w; canvas.height = h;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0, w, h);
+      resolve(canvas.toDataURL("image/jpeg", quality));
+    };
+    img.src = dataUrl;
+  });
+}
 import { useSession, signIn, signOut } from "next-auth/react";
 
 const INITIAL_ITEMS = [
@@ -83,9 +100,10 @@ export default function Home() {
     const file = e.target.files[0];
     if (!file || uploadingFor === null) return;
     const reader = new FileReader();
-    reader.onload = (ev) => {
+    reader.onload = async (ev) => {
+      const compressed = await compressImage(ev.target.result, 1200, 0.75);
       setItems(prev => prev.map((it, i) => i === uploadingFor
-        ? { ...it, receiptImage: ev.target.result, receiptSource: file.name }
+        ? { ...it, receiptImage: compressed, receiptSource: file.name }
         : it
       ));
       setUploadingFor(null);
@@ -144,10 +162,16 @@ export default function Home() {
   async function generatePDF() {
     setGenerating(true);
     try {
+      // Compress receipt images before sending to avoid payload size limits
+      const itemsWithCompressed = await Promise.all(items.map(async (it) => {
+        if (!it.receiptImage) return it;
+        const compressed = await compressImage(it.receiptImage, 1200, 0.75);
+        return { ...it, receiptImage: compressed };
+      }));
       const res = await fetch("/api/voucher/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ items, pvNumber: "PV4" }),
+        body: JSON.stringify({ items: itemsWithCompressed, pvNumber: "PV4" }),
       });
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
