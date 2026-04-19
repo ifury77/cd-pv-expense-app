@@ -1,40 +1,102 @@
-﻿import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
+﻿import { NextResponse } from 'next/server';
+const html_to_pdf = require('html-pdf-node');
 
 export async function POST(req) {
-  const { items, pvNumber } = await req.json();
-  const pdfDoc = await PDFDocument.create();
-  let page = pdfDoc.addPage([600, 800]);
-  const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
-  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  try {
+    const { items, pvNumber } = await req.json();
+    const totalSgd = items.reduce((sum, row) => sum + row.sgd, 0);
 
-  // Corporate Header
-  page.drawText('REDINGTON ASEAN - PAYMENT VOUCHER', { x: 50, y: 750, size: 16, font: boldFont });
-  page.drawText(`Voucher No: ${pvNumber || 'PV-001'}`, { x: 50, y: 730, size: 10, font });
-  page.drawText(`Claimant: Ivan Ong`, { x: 50, y: 715, size: 10, font });
+    // 1. Main Voucher Page (Template Matching)
+    let htmlContent = `
+      <html>
+      <head>
+        <style>
+          body { font-family: "Helvetica", Arial, sans-serif; padding: 30px; color: #333; }
+          .header { display: flex; justify-content: space-between; border-bottom: 2px solid #000; padding-bottom: 10px; }
+          .logo { height: 35px; }
+          .title { font-size: 22px; font-weight: bold; text-align: center; margin: 20px 0; text-decoration: underline; }
+          table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 10px; }
+          th { background: #f2f2f2; border: 1px solid #000; padding: 8px; text-align: center; text-transform: uppercase; }
+          td { border: 1px solid #000; padding: 8px; vertical-align: middle; }
+          .total-row { background: #e0e0e0; font-weight: bold; }
+          .page-break { page-break-before: always; }
+          .attachment-header { background: #1a365d; color: white; padding: 10px; font-size: 12px; margin-bottom: 20px; }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <div>
+            <img src="https://raw.githubusercontent.com/Redington-ASEAN/assets/main/logo.png" class="logo" />
+            <p style="margin-top:10px;"><strong>PAY TO:</strong> Ivan Ong</p>
+          </div>
+          <div style="text-align: right;">
+            <p><strong>Voucher No:</strong> ${pvNumber || 'PV4'}</p>
+            <p><strong>Date:</strong> ${new Date().toLocaleDateString('en-GB')}</p>
+          </div>
+        </div>
 
-  // Table Headers
-  const tableTop = 680;
-  page.drawRectangle({ x: 50, y: tableTop - 5, width: 500, height: 20, color: rgb(0.9, 0.9, 0.9) });
-  page.drawText('Date', { x: 55, y: tableTop, size: 10, font: boldFont });
-  page.drawText('Description', { x: 130, y: tableTop, size: 10, font: boldFont });
-  page.drawText('Amount (SGD)', { x: 480, y: tableTop, size: 10, font: boldFont });
+        <div class="title">PAYMENT VOUCHER</div>
 
-  // Draw Items
-  let currentY = tableTop - 25;
-  let total = 0;
-  items.forEach((item) => {
-    page.drawText(item.date || '', { x: 55, y: currentY, size: 9, font });
-    page.drawText(item.desc.substring(0, 60) || '', { x: 130, y: currentY, size: 9, font });
-    page.drawText(item.sgd.toFixed(2), { x: 500, y: currentY, size: 9, font });
-    total += item.sgd;
-    currentY -= 20;
-  });
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 5%;">No.</th>
+              <th style="width: 15%;">Date</th>
+              <th style="width: 35%;">Description</th>
+              <th style="width: 20%;">Reference / Booking ID</th>
+              <th style="width: 15%;">Orig. Amount</th>
+              <th style="width: 10%;">SGD</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${items.map((item, i) => `
+              <tr>
+                <td style="text-align: center;">${i + 1}</td>
+                <td>${item.date}</td>
+                <td>${item.desc}</td>
+                <td style="font-family: monospace;">${item.ref || '-'}</td>
+                <td>${item.orig || '-'}</td>
+                <td style="text-align: right; font-weight: bold;">${item.sgd.toFixed(2)}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+          <tfoot>
+            <tr class="total-row">
+              <td colspan="5" style="text-align: right;">TOTAL CLAIMABLE AMOUNT (SGD)</td>
+              <td style="text-align: right;">${totalSgd.toFixed(2)}</td>
+            </tr>
+          </tfoot>
+        </table>
 
-  // Total Section
-  page.drawLine({ start: { x: 50, y: currentY + 5 }, end: { x: 550, y: currentY + 5 } });
-  page.drawText('TOTAL CLAIM:', { x: 400, y: currentY - 15, size: 11, font: boldFont });
-  page.drawText(`SGD ${total.toFixed(2)}`, { x: 480, y: currentY - 15, size: 11, font: boldFont });
+        <div style="margin-top: 60px; font-size: 10px; display: flex; justify-content: space-between;">
+          <div style="border-top: 1px solid #000; width: 200px; text-align: center; padding-top: 5px;">Payment Approved By</div>
+          <div style="border-top: 1px solid #000; width: 200px; text-align: center; padding-top: 5px;">Received By</div>
+        </div>
 
-  const pdfBytes = await pdfDoc.save();
-  return new Response(pdfBytes, { headers: { 'Content-Type': 'application/pdf' } });
+        ${items.filter(item => item.receiptHtml).map((item, i) => `
+          <div class="page-break"></div>
+          <div class="attachment-header">RECEIPT ATTACHMENT #${i + 1} - ${item.desc}</div>
+          <div style="transform: scale(0.95); transform-origin: top left;">
+            ${item.receiptHtml}
+          </div>
+        `).join('')}
+      </body>
+      </html>
+    `;
+
+    const file = { content: htmlContent };
+    const options = { format: 'A4', margin: { top: '10mm', bottom: '10mm', left: '10mm', right: '10mm' } };
+    
+    const pdfBuffer = await html_to_pdf.generatePdf(file, options);
+
+    return new NextResponse(pdfBuffer, {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': `attachment; filename=PV_Ivan_Ong_${pvNumber}.pdf`,
+      },
+    });
+  } catch (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
 }
