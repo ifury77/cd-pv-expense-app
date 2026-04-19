@@ -3,23 +3,28 @@ import { authOptions } from "../../auth/[...nextauth]/route";
 import { google } from "googleapis";
 
 export async function GET(req) {
-  const session = await getServerSession(authOptions);
-  if (!session) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  try {
+    const { searchParams } = new URL(req.url);
+    const q = searchParams.get("q");
 
-  const { searchParams } = new URL(req.url);
-  const q = searchParams.get("q") || "receipt OR invoice";
+    if (!q) {
+      return Response.json({ results: [] });
+    }
 
-  const auth = new google.auth.OAuth2();
-  auth.setCredentials({ access_token: session.accessToken });
-  const gmail = google.gmail({ version: "v1", auth });
+    // TODO: your Gmail logic here
+    const results = [];
 
-  // Search threads
-  const threadsRes = await gmail.users.threads.list({
-    userId: "me",
-    q,
-    maxResults: 20,
-    includeSpamTrash: true,
-  });
+    return Response.json({ results });
+
+  } catch (err) {
+    console.error("Gmail API error:", err);
+
+    return Response.json(
+      { results: [], error: err.message },
+      { status: 500 }
+    );
+  }
+}
 
   const threads = threadsRes.data.threads || [];
   const results = [];
