@@ -4,12 +4,12 @@ import { useSession, signIn, signOut } from 'next-auth/react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
-// Embedded Redington Logo SVG
-const LOGO_SVG = `<svg viewBox="0 0 170 37" xmlns="http://www.w3.org/2000/svg"><path d="M33 18.5l-9.8 9.8V18.5c0-1.8 1.4-3.2 3.2-3.2h9.8c-1.4 0-2.8 1.5-2.8 3.3" fill="#ED1C24"/><path d="M13 28.3l9.8-9.8v9.8c0 1.8-1.4 3.2-3.2 3.2h-9.8c1.4 0 2.8-1.5 2.8-3.3" fill="#009640"/><path d="M33 3.3l-9.8 9.8V3.3c0-1.8 1.4-3.2 3.2-3.2h9.8C34.4 0 33 1.4 33 3.3" fill="#009640"/><path d="M13 13.2l9.8-9.8v9.8c0 1.8-1.4 3.2-3.2 3.2h-9.8c1.4 0 2.8-1.4 2.8-3.2" fill="#ED1C24"/><path d="M3.2 28.3C1.4 28.3 0 26.9 0 25.1v-9.8l9.8 9.8v3.2H3.2z" fill="#F15A29"/><path d="M3.2 3.3C1.4 3.3 0 4.7 0 6.5v9.8l9.8-9.8V3.3H3.2z" fill="#F15A29"/><g fill="#009640"><path d="M43.3 31.4V11.8h4.7v2.3c1.1-1.7 2.8-2.6 5-2.6 1.2 0 2.1.2 2.8.7s1.2 1 1.5 1.7.4 1.6.4 2.8v14.7h-4.7V18.2c0-1.2-.2-2.1-.7-2.7-.5-.6-1.1-.9-2-.9s-1.5.3-2 .8-.7 1.4-.7 2.5v13.5h-4.7zM68.5 31.6c-2 0-3.6-.5-4.8-1.4s-2.1-2.2-2.5-3.8l4.1-1.6c.6 1.9 1.7 2.9 3.3 2.9.7 0 1.2-.2 1.6-.5s.6-.8.6-1.3c0-.4-.1-.7-.4-1-.3-.3-.7-.5-1.3-.7s-1.5-.5-2.6-.8-2.1-.6-2.9-1c-.8-.4-1.4-.9-1.9-1.6s-.6-1.5-.6-2.6c0-1.5.5-2.8 1.6-3.8s2.5-1.5 4.3-1.5c1.6 0 2.9.4 3.9 1.1s1.7 1.7 2.1 3l-3.9 1.7c-.6-1.4-1.5-2-2.6-2-.6 0-1.1.1-1.4.4s-.5.6-.5 1.1c0 .4.1.7.4.9s.7.4 1.2.6c.6.2 1.4.4 2.5.7 1.1.3 2 .6 2.8 1 .8.4 1.5.9 1.9 1.6s.6 1.6.6 2.7c0 1.6-.6 3-1.7 4-1.1 1-2.6 1.6-4.4 1.6zM84.3 31.6c-1.8 0-3.3-.6-4.4-1.8s-1.7-2.9-1.7-5c0-1.3.3-2.5.8-3.5.5-1 1.3-1.9 2.2-2.5 1-.6 2.1-.9 3.4-.9 1.6 0 2.9.5 3.8 1.5.9 1 1.4 2.4 1.4 4.2h-7c.1 1.1.4 1.9.9 2.4s1.2.8 2.1.8c1.5 0 2.5-.6 2.9-1.9l3.8 1.6c-.3.9-.8 1.7-1.5 2.4-1 1-2.5 1.7-4.5 1.7zm2.3-12.3c-.4-.6-1-1-1.9-1s-1.5.3-1.9 1c-.4.6-.7 1.5-.7 2.6h5.2c0-1.1-.2-2-.7-2.6zM101.4 31.4V11.8h4.7v1.8c1-1.3 2.4-2 4.1-2 .3 0 .6 0 .8.1l-.3 4.4c-.4-.1-.8-.1-1.2-.1-1.1 0-2.1.4-2.8 1.2-.7.8-1.1 2-1.1 3.6v10.6h-4.7zM117.5 31.4V2h4.7v29.4h-4.7zM129.5 31.4V11.8h4.7v2.3c1.1-1.7 2.8-2.6 5-2.6 1.2 0 2.1.2 2.8.7s1.2 1 1.5 1.7.4 1.6.4 2.8v14.7h-4.7V18.2c0-1.2-.2-2.1-.7-2.7-.5-.6-1.1-.9-2-.9s-1.5.3-2 .8-.7 1.4-.7 2.5v13.5h-4.7zM152 36.9v-2c0-1.8 1.4-3.2 3.2-3.2h11.7c1.8 0 3.2 1.4 3.2 3.2v2"/></g></svg>`;
+const LOGO_SVG = `<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" viewBox="0 0 170.1 36.9" style="enable-background:new 0 0 170.1 36.9;" xml:space="preserve"><style type="text/css">.st0{fill:#ED1C24;}.st1{fill:#009640;}.st2{fill:#F15A29;}</style><g><path class="st0" d="M33,18.5l-9.8,9.8V18.5c0-1.8,1.4-3.2,3.2-3.2h9.8C34.4,15.2,33,16.7,33,18.5"/><path class="st1" d="M13,28.3l9.8-9.8v9.8c0,1.8-1.4,3.2-3.2,3.2h-9.8C11.6,31.6,13,30.1,13,28.3"/><path class="st1" d="M33,3.3l-9.8,9.8V3.3c0-1.8,1.4-3.2,3.2-3.2h9.8C34.4,0,33,1.4,33,3.3"/><path class="st0" d="M13,13.2l9.8-9.8v9.8c0,1.8-1.4,3.2-3.2,3.2h-9.8C11.6,16.4,13,15,13,13.2"/><path class="st2" d="M3.2,28.3C1.4,28.3,0,26.9,0,25.1v-9.8l9.8,9.8v3.2H3.2z"/><path class="st2" d="M3.2,3.3C1.4,3.3,0,4.7,0,6.5v9.8l9.8-9.8V3.3H3.2z"/></g><g><path class="st1" d="M43.3,31.4V11.8h4.7v2.3c1.1-1.7,2.8-2.6,5-2.6c1.2,0,2.1,0.2,2.8,0.7s1.2,1,1.5,1.7s0.4,1.6,0.4,2.8v14.7h-4.7V18.2c0-1.2-0.2-2.1-0.7-2.7c-0.5-0.6-1.1-0.9-2-0.9s-1.5,0.3-2,0.8s-0.7,1.4-0.7,2.5v13.5H43.3z"/><path class="st1" d="M68.5,31.6c-2,0-3.6-0.5-4.8-1.4s-2.1-2.2-2.5-3.8l4.1-1.6c0.6,1.9,1.7,2.9,3.3,2.9c0.7,0,1.2-0.2,1.6-0.5s0.6-0.8,0.6-1.3c0-0.4-0.1-0.7-0.4-1c-0.3-0.3-0.7-0.5-1.3-0.7s-1.5-0.5-2.6-0.8s-2.1-0.6-2.9-1c-0.8-0.4-1.4-0.9-1.9-1.6s-0.6-1.5-0.6-2.6c0-1.5,0.5-2.8,1.6-3.8s2.5-1.5,4.3-1.5c1.6,0,2.9,0.4,3.9,1.1s1.7,1.7,2.1,3l-3.9,1.7c-0.6-1.4-1.5-2-2.6-2c-0.6,0-1.1,0.1-1.4,0.4s-0.5,0.6-0.5,1.1c0,0.4,0.1,0.7,0.4,0.9s0.7,0.4,1.2,0.6c0.6,0.2,1.4,0.4,2.5,0.7c1.1,0.3,2,0.6,2.8,1c0.8,0.4,1.5,0.9,1.9,1.6s0.6,1.6,0.6,2.7c0,1.6-0.6,3-1.7,4C71.8,31,70.3,31.6,68.5,31.6z"/><path class="st1" d="M84.3,31.6c-1.8,0-3.3-0.6-4.4-1.8s-1.7-2.9-1.7-5c0-1.3,0.3-2.5,0.8-3.5c0.5-1,1.3-1.9,2.2-2.5c1-0.6,2.1-0.9,3.4-0.9c1.6,0,2.9,0.5,3.8,1.5c0.9,1,1.4,2.4,1.4,4.2h-7c0.1,1.1,0.4,1.9,0.9,2.4s1.2,0.8,2.1,0.8c1.5,0,2.5-0.6,2.9-1.9l3.8,1.6c-0.3,0.9-0.8,1.7-1.5,2.4C87.8,30.9,86.3,31.6,84.3,31.6z M86.6,19.3c-0.4-0.6-1-1-1.9-1s-1.5,0.3-1.9,1c-0.4,0.6-0.7,1.5-0.7,2.6h5.2C87.3,20.8,87.1,19.9,86.6,19.3z"/><path class="st1" d="M101.4,31.4V11.8h4.7v1.8c1-1.3,2.4-2,4.1-2c0.3,0,0.6,0,0.8,0.1l-0.3,4.4c-0.4-0.1-0.8-0.1-1.2-0.1c-1.1,0-2.1,0.4-2.8,1.2c-0.7,0.8-1.1,2-1.1,3.6v10.6H101.4z"/><path class="st1" d="M117.5,31.4V2h4.7v29.4H117.5z"/><path class="st1" d="M129.5,31.4V11.8h4.7v2.3c1.1-1.7,2.8-2.6,5-2.6c1.2,0,2.1,0.2,2.8,0.7s1.2,1,1.5,1.7s0.4,1.6,0.4,2.8v14.7h-4.7V18.2c0-1.2-0.2-2.1-0.7-2.7c-0.5-0.6-1.1-0.9-2-0.9s-1.5,0.3-2,0.8s-0.7,1.4-0.7,2.5v13.5H129.5z"/><path class="st1" d="M152,36.9v-2c0-1.8,1.4-3.2,3.2-3.2h11.7c1.8,0,3.2,1.4,3.2,3.2v2"/></g></svg>`;
 
 export default function Page() {
   const { data: session, status } = useSession();
   const cameraInputRef = useRef(null);
+  
   const [rows, setRows] = useState([]);
   const [activeTab, setActiveTab] = useState('voucher');
   const [searchResults, setSearchResults] = useState([]);
@@ -42,9 +42,11 @@ export default function Page() {
         setRows(prev => [...prev, {
           date: data.date || new Date().toLocaleDateString('en-GB'),
           desc: data.desc || "Scanned Receipt",
-          ref: data.ref || "",
+          ref: "",
+          origAmt: "SGD " + (data.amount || "0.00"),
           sgd: parseFloat(data.amount) || 0,
-          image: base64Image
+          image: base64Image,
+          receiptHtml: null
         }]);
         setActiveTab('voucher');
       } catch (err) { alert("AI Scan failed."); }
@@ -60,7 +62,7 @@ export default function Page() {
       const data = await res.json();
       setSearchResults((data.results || []).map(r => {
         const amtMatch = r.snippet?.match(/(?:SGD|S\$|Total|Charged|Fee)\s?S?\$?\s?([\d.,]+)/i);
-        return { ...r, editAmount: amtMatch ? amtMatch[1].replace(/,/g, '') : "0.00" };
+        return { ...r, extractedAmt: amtMatch ? amtMatch[1].replace(/,/g, '') : "0.00" };
       }));
     } catch (e) {}
     setIsSearching(false);
@@ -73,13 +75,15 @@ export default function Page() {
       const data = await res.json();
       emailHtml = data.html;
     } catch (e) {}
+    
     setRows(prev => [...prev, {
       date: item.date || new Date().toLocaleDateString('en-GB'),
       desc: item.subject,
       ref: item.snippet?.match(/[A-Z0-9]{8,}/)?.[0] || "",
-      sgd: parseFloat(item.editAmount) || 0,
-      receiptHtml: emailHtml,
-      image: null
+      origAmt: "SGD " + item.extractedAmt,
+      sgd: parseFloat(item.extractedAmt) || 0,
+      image: null,
+      receiptHtml: emailHtml
     }]);
     setActiveTab('voucher');
   };
@@ -89,33 +93,44 @@ export default function Page() {
     try {
       const doc = new jsPDF('landscape');
       
-      // LOGO & HEADER
-      const logoData = `data:image/svg+xml;base64,${btoa(LOGO_SVG)}`;
-      doc.addImage(logoData, 'SVG', 14, 10, 45, 10);
-      doc.setFontSize(9); doc.setTextColor(150);
-      doc.text('PAYMENT VOUCHER', 14, 25);
-      doc.text(`DATE: ${new Date().toLocaleDateString('en-GB')}`, 250, 25);
+      // Removed SVG logo to avoid plugin errors
+      doc.setFontSize(14);
+      doc.setTextColor(0, 150, 64);
+      doc.text('REDINGTON', 14, 15);
+      
+      doc.setFontSize(10);
+      doc.setTextColor(0);
+      doc.text('PAYMENT VOUCHER', 14, 30);
+      doc.text(`PAY TO: Ivan Ong`, 14, 36);
+      doc.text(`Date: ${new Date().toLocaleDateString('en-GB')}`, 250, 30);
 
       const tableRows = rows.map((row, i) => [
-        i + 1, row.date, row.desc, row.ref, `S$ ${row.sgd.toFixed(2)}`
+        i + 1,
+        row.date,
+        row.desc,
+        row.ref,
+        row.origAmt,
+        `S$ ${row.sgd.toFixed(2)}`
       ]);
 
       autoTable(doc, {
-        startY: 30,
-        head: [['No.', 'Date', 'Description', 'Reference', 'Amount (SGD)']],
+        startY: 45,
+        head: [['No.', 'Date', 'Description', 'Reference / Booking ID', 'Orig. Amount', 'SGD']],
         body: tableRows,
         theme: 'grid',
-        headStyles: { fillColor: [240, 240, 240], textColor: 0, fontStyle: 'bold' },
-        foot: [[{ content: 'TOTAL', colSpan: 4, styles: { halign: 'right', fontStyle: 'bold' } }, { content: `S$ ${totalSgd.toFixed(2)}`, styles: { fontStyle: 'bold' } }]]
+        styles: { fontSize: 8 },
+        headStyles: { fillColor: [240, 240, 240], textColor: [0, 0, 0], fontStyle: 'bold' },
+        foot: [[ { content: 'TOTAL', colSpan: 5, styles: { halign: 'right', fontStyle: 'bold' } }, { content: `S$ ${totalSgd.toFixed(2)}`, styles: { fontStyle: 'bold' } } ]]
       });
 
-      // ATTACHMENTS (Images)
-      rows.forEach((row) => {
+      // Appending screenshots
+      rows.forEach((row, index) => {
         if (row.image) {
           doc.addPage('a4', 'portrait');
-          doc.setFontSize(10); doc.setTextColor(150);
-          doc.text(`Attachment: ${row.desc}`, 14, 15);
-          doc.addImage(row.image, 'JPEG', 15, 25, 180, 0); 
+          doc.setTextColor(150);
+          doc.setFontSize(12);
+          doc.text(`Attachment ${index + 1}: ${row.desc}`, 14, 20);
+          doc.addImage(row.image, 'JPEG', 15, 30, 180, 0); 
         }
       });
 
@@ -124,85 +139,92 @@ export default function Page() {
     setIsGenerating(false);
   }
 
-  if (!session) return <div className="flex h-screen items-center justify-center"><button onClick={() => signIn('google')} className="bg-[#009640] text-white px-10 py-4 rounded-xl font-bold">Sign In to Redington</button></div>;
+  if (status === "loading") return <div className="p-20 text-center">Loading...</div>;
+  if (!session) return <div className="p-20 text-center"><button onClick={() => signIn('google')} className="bg-[#009640] text-white px-10 py-4 rounded-xl font-bold">Sign In</button></div>;
 
   return (
-    <div className="max-w-6xl mx-auto p-6 font-sans">
-      <div className="flex justify-between items-center mb-10">
+    <div className="max-w-6xl mx-auto p-6 font-sans bg-white min-h-screen">
+      <div className="flex justify-between items-center mb-12 border-b pb-6">
         <div dangerouslySetInnerHTML={{ __html: LOGO_SVG }} className="h-10 w-auto" />
-        <button onClick={() => signOut()} className="text-[10px] font-bold text-slate-300 uppercase hover:text-red-500">Sign Out</button>
+        <button onClick={() => signOut()} className="text-xs text-slate-300 font-bold uppercase hover:text-red-500">Sign out</button>
       </div>
 
-      <div className="flex gap-2 mb-8 bg-slate-100 p-1 rounded-2xl w-fit">
-        <button onClick={() => setActiveTab('voucher')} className={`px-8 py-3 rounded-xl text-sm font-bold transition-all ${activeTab === 'voucher' ? 'bg-white shadow text-[#009640]' : 'text-slate-500'}`}>My Voucher</button>
-        <button onClick={() => setActiveTab('add')} className={`px-8 py-3 rounded-xl text-sm font-bold transition-all ${activeTab === 'add' ? 'bg-white shadow text-[#009640]' : 'text-slate-500'}`}>+ Take Photo</button>
-        <button onClick={() => setActiveTab('search')} className={`px-8 py-3 rounded-xl text-sm font-bold transition-all ${activeTab === 'search' ? 'bg-white shadow text-[#009640]' : 'text-slate-500'}`}>Search Gmail</button>
+      <div className="flex gap-2 mb-8 bg-slate-100 p-1.5 rounded-2xl w-fit">
+        <button onClick={() => setActiveTab('voucher')} className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === 'voucher' ? 'bg-white shadow text-[#009640]' : 'text-slate-500'}`}>My Voucher</button>
+        <button onClick={() => setActiveTab('add')} className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === 'add' ? 'bg-white shadow text-[#009640]' : 'text-slate-500'}`}>+ Take Photo</button>
+        <button onClick={() => setActiveTab('search')} className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === 'search' ? 'bg-white shadow text-[#009640]' : 'text-slate-500'}`}>Search Gmail</button>
       </div>
 
       {activeTab === 'voucher' && (
-        <div className="bg-white rounded-3xl border shadow-sm p-6">
-          <table className="w-full text-xs text-left">
-            <thead>
-              <tr className="text-slate-400 border-b uppercase text-[10px] tracking-widest font-bold">
-                <th className="pb-4">Date</th>
-                <th className="pb-4 w-1/2">Description</th>
-                <th className="pb-4">Reference</th>
-                <th className="pb-4 text-right">SGD</th>
-                <th className="pb-4"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-50">
-              {rows.map((row, i) => (
-                <tr key={i} className="group">
-                  <td className="py-4"><input className="w-20 border-none bg-transparent" value={row.date} onChange={e => updateRow(i, 'date', e.target.value)} /></td>
-                  <td className="py-4">
-                    <input className="w-full border-none bg-transparent font-bold text-slate-800" value={row.desc} onChange={e => updateRow(i, 'desc', e.target.value)} />
-                    {row.receiptHtml && <button onClick={() => { const w = window.open(); w.document.write(row.receiptHtml); }} className="text-blue-500 text-[10px] block mt-1 underline">View Email</button>}
-                  </td>
-                  <td className="py-4"><input className="w-full border-none bg-transparent text-slate-500" value={row.ref} placeholder="Ref#" onChange={e => updateRow(i, 'ref', e.target.value)} /></td>
-                  <td className="py-4 text-right">
-                    <input className="w-20 border-none bg-green-50 rounded p-1 text-right font-black text-slate-900" type="number" step="0.01" value={row.sgd} onChange={e => updateRow(i, 'sgd', e.target.value)} />
-                  </td>
-                  <td className="py-4 text-right opacity-0 group-hover:opacity-100"><button onClick={() => setRows(rows.filter((_, idx) => idx !== i))} className="text-red-300">✕</button></td>
+        <div className="space-y-6">
+          <div className="bg-white rounded-2xl border shadow-sm p-4 overflow-x-auto">
+            <table className="w-full text-xs text-left border-collapse">
+              <thead>
+                <tr className="bg-slate-50 text-slate-500 border-b uppercase text-[10px] tracking-widest font-bold">
+                  <th className="p-3">Date</th>
+                  <th className="p-3 w-1/3">Description</th>
+                  <th className="p-3">Reference</th>
+                  <th className="p-3">Orig. Amount</th>
+                  <th className="p-3 text-right">SGD</th>
+                  <th className="p-3 text-center">Receipt</th>
+                  <th className="p-3"></th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-          <button onClick={generatePDF} className="mt-10 w-full bg-[#009640] text-white py-5 rounded-2xl font-black text-lg shadow-xl shadow-green-100">
-            {isGenerating ? "Assembling PDF..." : "Download PDF Voucher"}
+              </thead>
+              <tbody className="divide-y">
+                {rows.map((row, i) => (
+                  <tr key={i} className="hover:bg-slate-50/50">
+                    <td className="p-3"><input className="w-20 border-none bg-transparent" value={row.date} onChange={e => updateRow(i, 'date', e.target.value)} /></td>
+                    <td className="p-3 font-bold text-slate-800"><input className="w-full border-none bg-transparent" value={row.desc} onChange={e => updateRow(i, 'desc', e.target.value)} /></td>
+                    <td className="p-3"><input className="w-full border-none bg-transparent text-slate-500" value={row.ref} placeholder="Enter Ref" onChange={e => updateRow(i, 'ref', e.target.value)} /></td>
+                    <td className="p-3"><input className="w-24 border-none bg-transparent" value={row.origAmt} onChange={e => updateRow(i, 'origAmt', e.target.value)} /></td>
+                    <td className="p-3 text-right"><input className="w-16 border-none bg-green-50 rounded p-1 text-right font-black" type="number" value={row.sgd} onChange={e => updateRow(i, 'sgd', e.target.value)} /></td>
+                    <td className="p-3 text-center">
+                      {row.receiptHtml ? (
+                        <button onClick={() => { const w = window.open(); w.document.write(row.receiptHtml); }} className="text-blue-500 font-bold underline">View Email</button>
+                      ) : row.image ? (
+                        <span className="text-green-600 font-bold text-[9px] uppercase italic">Attached</span>
+                      ) : null}
+                    </td>
+                    <td className="p-3 text-right"><button onClick={() => setRows(rows.filter((_, idx) => idx !== i))} className="text-slate-200 hover:text-red-500">✕</button></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <button onClick={generatePDF} className="w-full bg-[#009640] text-white py-5 rounded-2xl font-black text-lg shadow-xl shadow-green-100 transition-transform active:scale-[0.98]">
+            {isGenerating ? "Preparing PDF..." : "Download Voucher PDF"}
           </button>
         </div>
       )}
 
       {activeTab === 'add' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <button onClick={() => cameraInputRef.current.click()} className="p-20 border-4 border-dashed border-slate-100 rounded-[3rem] bg-white hover:bg-slate-50 flex flex-col items-center justify-center transition-all">
-            <span className="text-5xl mb-4">📸</span>
-            <span className="font-bold text-slate-700">Scan Receipt</span>
-            <span className="text-xs text-slate-400 mt-2">Appends to PDF automatically</span>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <button onClick={() => cameraInputRef.current.click()} className="p-20 border-4 border-dashed border-slate-100 rounded-[3rem] bg-white hover:bg-slate-50 flex flex-col items-center justify-center transition-all group">
+            <span className="text-5xl mb-4 group-hover:scale-110 transition-transform">📸</span>
+            <span className="font-bold text-slate-700">Take Photo / Upload</span>
           </button>
           <input type="file" accept="image/*" ref={cameraInputRef} className="hidden" onChange={processImage} />
-          {isProcessing && <div className="p-20 text-center animate-pulse text-[#009640] font-black uppercase">Analyzing...</div>}
+          {isProcessing && <div className="col-span-full text-center p-12 animate-pulse text-[#009640] font-black uppercase">AI Analyzing...</div>}
         </div>
       )}
 
       {activeTab === 'search' && (
         <div className="space-y-4">
-          <button onClick={handleSearch} className="w-full bg-slate-900 text-white py-4 rounded-2xl font-bold">{isSearching ? "Searching Gmail..." : "Search Transport Receipts"}</button>
+          <button onClick={handleSearch} disabled={isSearching} className="w-full bg-slate-900 text-white py-4 rounded-2xl font-bold">{isSearching ? "Searching..." : "Search Gmail"}</button>
           {searchResults.map((res, i) => (
-            <div key={i} className="p-5 border rounded-2xl flex justify-between items-center bg-white shadow-sm">
+            <div key={i} className="p-4 border rounded-2xl flex justify-between items-center bg-white shadow-sm">
               <div className="w-2/3">
-                <div className="text-[10px] text-blue-500 font-bold mb-1">{res.date}</div>
-                <div className="text-sm font-bold truncate">{res.subject}</div>
-                <div className="text-[10px] text-slate-400 italic truncate mt-1">{res.snippet}</div>
+                <div className="text-[10px] text-blue-600 font-bold mb-1">{res.date}</div>
+                <div className="text-sm font-bold truncate text-slate-800">{res.subject}</div>
+                <div className="text-[10px] text-slate-400 italic truncate">{res.snippet}</div>
               </div>
-              <div className="flex items-center gap-3">
-                <input className="w-20 p-2 border rounded-lg text-right font-bold bg-slate-50" value={res.editAmount} onChange={e => {
+              <div className="flex gap-2 items-center">
+                <input className="w-20 p-2 border rounded-xl text-right font-bold bg-slate-50" value={res.extractedAmt} onChange={e => {
                   const updated = [...searchResults];
-                  updated[i].editAmount = e.target.value;
+                  updated[i].extractedAmt = e.target.value;
                   setSearchResults(updated);
                 }} />
-                <button onClick={() => addFromGmail(res)} className="bg-[#009640] text-white px-5 py-2 rounded-lg text-xs font-bold">Add</button>
+                <button onClick={() => addFromGmail(res)} className="bg-[#009640] text-white px-5 py-2 rounded-xl text-xs font-bold">Add</button>
               </div>
             </div>
           ))}
