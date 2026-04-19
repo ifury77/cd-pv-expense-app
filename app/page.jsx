@@ -110,7 +110,7 @@ export default function Page() {
                     <th className="px-4 py-3 text-left text-gray-500 font-medium">Date</th>
                     <th className="px-4 py-3 text-left text-gray-500 font-medium">Description</th>
                     <th className="px-4 py-3 text-right text-gray-500 font-medium">SGD</th>
-                    <th className="px-4 py-3 text-center text-gray-500 font-medium">Receipt</th>
+                    <th className="px-4 py-3 text-center text-gray-500 font-medium">Receipt</th><th className="px-4 py-3 text-right text-gray-500 font-medium">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
@@ -129,7 +129,7 @@ export default function Page() {
                 </tbody>
                 <tfoot className="bg-slate-900 text-white">
                   <tr>
-                    <td colSpan="2" className="px-4 py-4 text-right font-bold">TOTAL SGD</td>
+                    <td colSpan="3" className="px-4 py-4 text-right font-bold">TOTAL SGD</td>
                     <td className="px-4 py-4 text-right font-bold text-lg">{totalSgd.toFixed(2)}</td>
                     <td></td>
                   </tr>
@@ -175,3 +175,4 @@ export default function Page() {
     </div>
   );
 }
+
