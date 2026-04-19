@@ -43,7 +43,8 @@ export default function Page() {
           desc: data.desc || "Scanned Receipt",
           ref: "",
           sgd: parseFloat(data.amount) || 0,
-          image: base64Image
+          image: base64Image,
+          isEmail: false
         }]);
         setActiveTab('voucher');
       } catch (err) { alert("AI Scan failed."); }
@@ -78,7 +79,8 @@ export default function Page() {
       ref: item.snippet?.match(/[A-Z0-9]{8,}/)?.[0] || "",
       sgd: parseFloat(item.editAmount) || 0,
       receiptHtml: emailHtml,
-      image: null
+      image: null,
+      isEmail: true
     }]);
     setActiveTab('voucher');
   };
@@ -87,11 +89,8 @@ export default function Page() {
     setIsGenerating(true);
     try {
       const doc = new jsPDF('landscape');
-      
-      // Header branding (Text based to avoid SVG errors)
       doc.setFontSize(18); doc.setTextColor(0, 150, 64);
       doc.text('REDINGTON', 14, 18);
-      
       doc.setFontSize(10); doc.setTextColor(0);
       doc.text('PAYMENT VOUCHER', 14, 30);
       doc.text(`PAY TO: Ivan Ong`, 14, 36);
@@ -110,16 +109,30 @@ export default function Page() {
         foot: [[{ content: 'TOTAL CLAIM', colSpan: 4, styles: { halign: 'right', fontStyle: 'bold' } }, { content: `S$ ${totalSgd.toFixed(2)}`, styles: { fontStyle: 'bold' } }]]
       });
 
-      // MANDATORY ATTACHMENT LOOP
-      rows.forEach((row, index) => {
+      // LOOP THROUGH ROWS FOR ATTACHMENTS
+      for (const [index, row] of rows.entries()) {
         if (row.image) {
-          doc.addPage('a4', 'portrait'); // Standard receipt page size
+          // It is a photo
+          doc.addPage('a4', 'portrait');
           doc.setFontSize(12); doc.setTextColor(100);
           doc.text(`Attachment ${index + 1}: ${row.desc}`, 15, 20);
-          // Add the image (Base64) to the PDF
-          doc.addImage(row.image, 'JPEG', 15, 30, 180, 0); 
+          doc.addImage(row.image, 'JPEG', 15, 30, 180, 0);
+        } else if (row.isEmail && row.receiptHtml) {
+          // It is a Gmail receipt
+          doc.addPage('a4', 'portrait');
+          doc.setFontSize(12); doc.setTextColor(100);
+          doc.text(`Attachment ${index + 1} (Email): ${row.desc}`, 15, 20);
+          
+          // Use jsPDF's built-in html worker to render the email content
+          await doc.html(row.receiptHtml, {
+            callback: function(d) { /* handled by loop */ },
+            x: 15,
+            y: 30,
+            width: 180,
+            windowWidth: 800 // Scale email to fit
+          });
         }
-      });
+      }
 
       doc.save(`Voucher_Ivan_Ong.pdf`);
     } catch (e) { alert("PDF Error: " + e.message); }
@@ -142,7 +155,7 @@ export default function Page() {
       </div>
 
       {activeTab === 'voucher' && (
-        <div className="bg-white rounded-3xl border shadow-sm p-6 overflow-hidden">
+        <div className="bg-white rounded-3xl border shadow-sm p-6">
           <table className="w-full text-xs text-left">
             <thead>
               <tr className="text-slate-400 border-b uppercase text-[10px] tracking-widest font-bold">
@@ -159,7 +172,7 @@ export default function Page() {
                   <td className="py-4"><input className="w-20 border-none bg-transparent" value={row.date} onChange={e => updateRow(i, 'date', e.target.value)} /></td>
                   <td className="py-4">
                     <input className="w-full border-none bg-transparent font-bold text-slate-800" value={row.desc} onChange={e => updateRow(i, 'desc', e.target.value)} />
-                    {row.receiptHtml ? <button onClick={() => { const w = window.open(); w.document.write(row.receiptHtml); }} className="text-blue-500 text-[10px] block mt-1 underline uppercase font-bold">View Email</button> : row.image ? <span className="text-green-500 text-[9px] font-bold block mt-1 uppercase italic">Screenshot Attached</span> : null}
+                    {row.receiptHtml && <button onClick={() => { const w = window.open(); w.document.write(row.receiptHtml); }} className="text-blue-500 text-[10px] block mt-1 underline uppercase font-bold">View Source Email</button>}
                   </td>
                   <td className="py-4"><input className="w-full border-none bg-transparent text-slate-500" value={row.ref} placeholder="Ref#" onChange={e => updateRow(i, 'ref', e.target.value)} /></td>
                   <td className="py-4 text-right">
@@ -171,7 +184,7 @@ export default function Page() {
             </tbody>
           </table>
           <button onClick={generatePDF} className="mt-10 w-full bg-[#009640] text-white py-5 rounded-2xl font-black text-lg shadow-xl shadow-green-100">
-            {isGenerating ? "Processing Attachments..." : "Download PDF Voucher"}
+            {isGenerating ? "Rendering Email Attachments..." : "Download PDF Voucher"}
           </button>
         </div>
       )}
@@ -203,7 +216,7 @@ export default function Page() {
                   updated[i].editAmount = e.target.value;
                   setSearchResults(updated);
                 }} />
-                <button onClick={() => addFromGmail(res)} className="bg-[#009640] text-white px-5 py-2 rounded-lg text-xs font-bold">Add</button>
+                <button onClick={() => addFromGmail(res)} className="bg-[#009640] text-white px-5 py-2 rounded-xl text-xs font-bold">Add</button>
               </div>
             </div>
           ))}
