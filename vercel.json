@@ -1,0 +1,11 @@
+﻿{
+  "functions": {
+    "app/api/voucher/generate/route.js": {
+      "memory": 1024,
+      "maxDuration": 60
+    },
+    "app/api/ocr/route.js": {
+      "memory": 1024
+    }
+  }
+}

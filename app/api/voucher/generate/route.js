@@ -2,7 +2,7 @@
 import puppeteer from 'puppeteer-core';
 import chromium from '@sparticuz/chromium';
 
-export const maxDuration = 60; 
+export const maxDuration = 60; // Extend Vercel timeout to 60s
 
 export async function POST(req) {
   let browser = null;
@@ -14,13 +14,14 @@ export async function POST(req) {
       <html>
       <head>
         <style>
-          body { font-family: Helvetica, Arial, sans-serif; padding: 20px; font-size: 11px; }
+          body { font-family: Helvetica, Arial, sans-serif; padding: 30px; font-size: 11px; }
           .header { display: flex; justify-content: space-between; border-bottom: 2px solid #000; padding-bottom: 5px; margin-bottom: 15px; }
           table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-          th { background: #f0f0f0; border: 1px solid #000; padding: 6px; }
-          td { border: 1px solid #000; padding: 6px; }
+          th { background: #f2f2f2; border: 1px solid #000; padding: 8px; text-transform: uppercase; font-size: 9px; }
+          td { border: 1px solid #000; padding: 8px; vertical-align: top; }
+          .total-row { background: #eee; font-weight: bold; }
           .page-break { page-break-before: always; }
-          .receipt-title { background: #1a365d; color: white; padding: 8px; margin-top: 20px; font-weight: bold; }
+          .attachment-label { background: #1a365d; color: white; padding: 10px; margin-bottom: 10px; font-weight: bold; }
         </style>
       </head>
       <body>
@@ -31,7 +32,14 @@ export async function POST(req) {
         <h2 style="text-align:center; text-decoration: underline;">PAYMENT VOUCHER</h2>
         <table>
           <thead>
-            <tr><th>No.</th><th>Date</th><th>Description</th><th>Ref</th><th>Orig. Amt</th><th>SGD</th></tr>
+            <tr>
+              <th width="5%">No.</th>
+              <th width="15%">Date</th>
+              <th width="40%">Description</th>
+              <th width="15%">Ref</th>
+              <th width="15%">Orig. Amt</th>
+              <th width="10%">SGD</th>
+            </tr>
           </thead>
           <tbody>
             ${items.map((item, i) => `
@@ -39,20 +47,21 @@ export async function POST(req) {
                 <td align="center">${i + 1}</td>
                 <td>${item.date}</td>
                 <td>${item.desc}</td>
-                <td>${item.ref || '-'}</td>
+                <td style="word-break: break-all;">${item.ref || '-'}</td>
                 <td>${item.orig || '-'}</td>
-                <td align="right">${(item.sgd || 0).toFixed(2)}</td>
+                <td align="right"><strong>${(item.sgd || 0).toFixed(2)}</strong></td>
               </tr>
             `).join('')}
           </tbody>
-          <tr style="background:#eee; font-weight:bold;">
-            <td colspan="5" align="right">TOTAL SGD</td>
+          <tr class="total-row">
+            <td colspan="5" align="right">TOTAL CLAIMABLE AMOUNT (SGD)</td>
             <td align="right">${totalSgd.toFixed(2)}</td>
           </tr>
         </table>
+
         ${items.filter(item => item.receiptHtml).map((item, i) => `
           <div class="page-break"></div>
-          <div class="receipt-title">ATTACHMENT #${i + 1} - ${item.desc}</div>
+          <div class="attachment-label">RECEIPT ATTACHMENT #${i + 1} - ${item.desc}</div>
           <div style="zoom: 0.8;">${item.receiptHtml}</div>
         `).join('')}
       </body>
@@ -60,11 +69,10 @@ export async function POST(req) {
     `;
 
     browser = await puppeteer.launch({
-      args: chromium.args,
+      args: [...chromium.args, '--hide-scrollbars', '--disable-web-security'],
       defaultViewport: chromium.defaultViewport,
       executablePath: await chromium.executablePath(),
       headless: chromium.headless,
-      ignoreHTTPSErrors: true,
     });
 
     const page = await browser.newPage();
@@ -72,20 +80,20 @@ export async function POST(req) {
     const pdfBuffer = await page.pdf({ 
       format: 'A4', 
       printBackground: true,
-      margin: { top: '1cm', bottom: '1cm', left: '1cm', right: '1cm' }
+      margin: { top: '1cm', right: '1cm', bottom: '1cm', left: '1cm' }
     });
 
     await browser.close();
 
     return new NextResponse(pdfBuffer, {
-      headers: { 
+      headers: {
         'Content-Type': 'application/pdf',
-        'Content-Disposition': 'attachment; filename=Payment_Voucher_Ivan_Ong.pdf' 
+        'Content-Disposition': `attachment; filename=Payment_Voucher_Ivan_Ong.pdf`,
       },
     });
   } catch (error) {
     if (browser) await browser.close();
-    console.error("PDF Error:", error.message);
+    console.error("PDF Generator Error:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
