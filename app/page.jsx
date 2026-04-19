@@ -6,11 +6,14 @@ import autoTable from 'jspdf-autotable';
 
 export default function Page() {
   const { data: session, status } = useSession();
+  const cameraInputRef = useRef(null);
+  
   const [rows, setRows] = useState([]);
   const [activeTab, setActiveTab] = useState('voucher');
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const totalSgd = rows.reduce((sum, row) => sum + (parseFloat(row.sgd) || 0), 0);
 
@@ -18,6 +21,36 @@ export default function Page() {
     const updated = [...rows];
     updated[index][field] = value;
     setRows(updated);
+  };
+
+  const processImage = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setIsProcessing(true);
+    const reader = new FileReader();
+    reader.onloadend = async () => {
+      const base64Image = reader.result;
+      try {
+        const res = await fetch('/api/ocr', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ image: base64Image })
+        });
+        const data = await res.json();
+        setRows(prev => [...prev, {
+          date: data.date || new Date().toLocaleDateString('en-GB'),
+          desc: data.desc || "Scanned Receipt",
+          ref: "",
+          origAmt: "SGD " + (data.amount || "0.00"),
+          sgd: parseFloat(data.amount) || 0,
+          image: base64Image,
+          receiptHtml: null
+        }]);
+        setActiveTab('voucher');
+      } catch (err) { alert("AI Scan failed."); }
+      setIsProcessing(false);
+    };
+    reader.readAsDataURL(file);
   };
 
   async function handleSearch() {
@@ -47,6 +80,7 @@ export default function Page() {
       ref: item.snippet?.match(/[A-Z0-9]{8,}/)?.[0] || "",
       origAmt: "SGD " + item.editAmount,
       sgd: parseFloat(item.editAmount) || 0,
+      image: null,
       receiptHtml: emailHtml
     }]);
     setActiveTab('voucher');
@@ -56,10 +90,11 @@ export default function Page() {
     setIsGenerating(true);
     try {
       const doc = new jsPDF('landscape');
+      
+      // Page 1: VOUCHER TABLE
       doc.setFontSize(20);
       doc.setTextColor(0, 150, 64);
       doc.text('REDINGTON', 14, 20);
-      
       doc.setFontSize(10);
       doc.setTextColor(0);
       doc.text('PAYMENT VOUCHER', 14, 30);
@@ -85,6 +120,17 @@ export default function Page() {
         foot: [[ { content: 'TOTAL', colSpan: 5, styles: { halign: 'right', fontStyle: 'bold' } }, { content: `S$ ${totalSgd.toFixed(2)}`, styles: { fontStyle: 'bold' } } ]]
       });
 
+      // Subsequent Pages: ATTACHMENTS (Only for photos)
+      rows.forEach((row, index) => {
+        if (row.image) {
+          doc.addPage('a4', 'portrait');
+          doc.setTextColor(100);
+          doc.setFontSize(12);
+          doc.text(`Attachment ${index + 1}: ${row.desc}`, 14, 20);
+          doc.addImage(row.image, 'JPEG', 15, 30, 180, 0); 
+        }
+      });
+
       doc.save(`Voucher_Ivan_Ong.pdf`);
     } catch (e) { alert("PDF Error: " + e.message); }
     setIsGenerating(false);
@@ -102,19 +148,20 @@ export default function Page() {
 
       <div className="flex gap-2 mb-8 bg-slate-100 p-1.5 rounded-2xl w-fit">
         <button onClick={() => setActiveTab('voucher')} className={`px-6 py-2.5 rounded-xl text-sm font-bold ${activeTab === 'voucher' ? 'bg-white shadow text-[#009640]' : 'text-slate-500'}`}>My Voucher</button>
+        <button onClick={() => setActiveTab('add')} className={`px-6 py-2.5 rounded-xl text-sm font-bold ${activeTab === 'add' ? 'bg-white shadow text-[#009640]' : 'text-slate-500'}`}>+ Take Photo</button>
         <button onClick={() => setActiveTab('search')} className={`px-6 py-2.5 rounded-xl text-sm font-bold ${activeTab === 'search' ? 'bg-white shadow text-[#009640]' : 'text-slate-500'}`}>Search Gmail</button>
       </div>
 
       {activeTab === 'voucher' && (
-        <div className="bg-white rounded-2xl border shadow-sm overflow-x-auto p-4">
-          <table className="w-full text-xs text-left border-collapse">
+        <div className="bg-white rounded-2xl border shadow-sm p-4">
+          <table className="w-full text-[11px] text-left border-collapse">
             <thead>
               <tr className="bg-slate-50 text-slate-500 border-b">
                 <th className="p-3">Date</th>
-                <th className="p-3">Description</th>
+                <th className="p-3 w-1/3">Description</th>
                 <th className="p-3">Reference</th>
                 <th className="p-3">Orig. Amount</th>
-                <th className="p-3">SGD</th>
+                <th className="p-3 text-right">SGD</th>
                 <th className="p-3 text-center">Receipt</th>
                 <th className="p-3"></th>
               </tr>
@@ -122,30 +169,47 @@ export default function Page() {
             <tbody className="divide-y">
               {rows.map((row, i) => (
                 <tr key={i}>
-                  <td className="p-3"><input className="w-24 border-none bg-transparent" value={row.date} onChange={e => updateRow(i, 'date', e.target.value)} /></td>
+                  <td className="p-3"><input className="w-20 border-none bg-transparent" value={row.date} onChange={e => updateRow(i, 'date', e.target.value)} /></td>
                   <td className="p-3"><input className="w-full border-none bg-transparent font-bold" value={row.desc} onChange={e => updateRow(i, 'desc', e.target.value)} /></td>
                   <td className="p-3"><input className="w-full border-none bg-transparent" value={row.ref} onChange={e => updateRow(i, 'ref', e.target.value)} /></td>
                   <td className="p-3"><input className="w-24 border-none bg-transparent" value={row.origAmt} onChange={e => updateRow(i, 'origAmt', e.target.value)} /></td>
-                  <td className="p-3 font-bold text-right"><input className="w-16 border-none bg-transparent text-right" type="number" value={row.sgd} onChange={e => updateRow(i, 'sgd', e.target.value)} /></td>
+                  <td className="p-3 text-right"><input className="w-16 border-none bg-transparent text-right font-bold" type="number" value={row.sgd} onChange={e => updateRow(i, 'sgd', e.target.value)} /></td>
                   <td className="p-3 text-center">
-                    {row.receiptHtml && <button onClick={() => { const w = window.open(); w.document.write(row.receiptHtml); }} className="text-blue-500 font-bold underline">View Email</button>}
+                    {row.receiptHtml ? (
+                      <button onClick={() => { const w = window.open(); w.document.write(row.receiptHtml); }} className="text-blue-600 font-bold underline">View Email</button>
+                    ) : row.image ? (
+                      <span className="text-green-600 font-bold text-[9px] uppercase italic">Screenshot Added</span>
+                    ) : null}
                   </td>
                   <td className="p-3"><button onClick={() => setRows(rows.filter((_, idx) => idx !== i))} className="text-slate-300 hover:text-red-500">✕</button></td>
                 </tr>
               ))}
             </tbody>
           </table>
-          <button onClick={generatePDF} className="mt-8 w-full bg-[#009640] text-white py-4 rounded-xl font-bold">Download Voucher PDF</button>
+          <button onClick={generatePDF} className="mt-8 w-full bg-[#3182ce] text-white py-4 rounded-xl font-bold text-lg shadow-lg">
+            {isGenerating ? "Attaching Screenshots..." : "Download Voucher PDF"}
+          </button>
+        </div>
+      )}
+
+      {activeTab === 'add' && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <button onClick={() => cameraInputRef.current.click()} className="p-16 border-2 border-dashed border-slate-200 rounded-[2rem] bg-white hover:bg-slate-50 flex flex-col items-center">
+            <span className="text-4xl mb-4">📸</span>
+            <span className="font-bold text-slate-700">Take Photo / Upload</span>
+          </button>
+          <input type="file" accept="image/*" ref={cameraInputRef} className="hidden" onChange={processImage} />
+          {isProcessing && <div className="col-span-full text-center p-12 animate-pulse text-[#009640] font-black uppercase">AI Scanning...</div>}
         </div>
       )}
 
       {activeTab === 'search' && (
         <div className="space-y-4">
-          <button onClick={handleSearch} disabled={isSearching} className="w-full bg-slate-900 text-white py-4 rounded-2xl font-bold">{isSearching ? "Searching..." : "Search Gmail"}</button>
+          <button onClick={handleSearch} disabled={isSearching} className="w-full bg-slate-900 text-white py-4 rounded-2xl font-bold">Search Gmail</button>
           {searchResults.map((res, i) => (
-            <div key={i} className="p-4 border rounded-2xl flex justify-between items-center bg-white">
+            <div key={i} className="p-4 border rounded-2xl flex justify-between items-center bg-white shadow-sm">
               <div className="w-2/3">
-                <div className="text-[10px] text-blue-600 font-bold">{res.date}</div>
+                <div className="text-[10px] text-blue-600 font-bold uppercase">{res.date}</div>
                 <div className="text-sm font-bold truncate">{res.subject}</div>
               </div>
               <button onClick={() => addFromGmail(res)} className="bg-[#009640] text-white px-5 py-2 rounded-xl text-xs font-bold">Add</button>
