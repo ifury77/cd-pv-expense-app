@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { useState, useRef } from "react";
 
 // Compress image before sending to API
@@ -20,10 +20,10 @@ async function compressImage(dataUrl, maxWidth = 1200, quality = 0.75) {
 import { useSession, signIn, signOut } from "next-auth/react";
 
 const INITIAL_ITEMS = [
-  { no:1, date:"14 Apr 2026", desc:"Grab Car – Carpark Alley BEA Bldg to 338 East Coast Rd", ref:"A-97GM4LKGX2X7AV", orig:"SGD 30.50", sgd:30.50, receiptSource:"gmail" },
-  { no:2, date:"14 Apr 2026", desc:"Grab Car – 406 East Coast Rd to 29 Lor Melayu, Palmera East", ref:"A-97H7GBLGWLIQAV", orig:"SGD 8.10", sgd:8.10, receiptSource:"gmail" },
-  { no:3, date:"16 Apr 2026", desc:"TADA GO – BEA Bldg, 60 Robinson Rd to Bigmama Korean Restaurant", ref:"019d95b0-bb35", orig:"SGD 15.48", sgd:15.48, receiptSource:"gmail" },
-  { no:4, date:"16 Apr 2026", desc:"Grab Car – GrabCar Standard", ref:"A-97PV8OOGXBHGAV", orig:"SGD 20.50", sgd:20.50, receiptSource:"gmail" },
+  { no:1, date:"14 Apr 2026", desc:"Grab Car â€“ Carpark Alley BEA Bldg to 338 East Coast Rd", ref:"A-97GM4LKGX2X7AV", orig:"SGD 30.50", sgd:30.50, receiptSource:"gmail" },
+  { no:2, date:"14 Apr 2026", desc:"Grab Car â€“ 406 East Coast Rd to 29 Lor Melayu, Palmera East", ref:"A-97H7GBLGWLIQAV", orig:"SGD 8.10", sgd:8.10, receiptSource:"gmail" },
+  { no:3, date:"16 Apr 2026", desc:"TADA GO â€“ BEA Bldg, 60 Robinson Rd to Bigmama Korean Restaurant", ref:"019d95b0-bb35", orig:"SGD 15.48", sgd:15.48, receiptSource:"gmail" },
+  { no:4, date:"16 Apr 2026", desc:"Grab Car â€“ GrabCar Standard", ref:"A-97PV8OOGXBHGAV", orig:"SGD 20.50", sgd:20.50, receiptSource:"gmail" },
 ];
 
 export default function Home() {
@@ -49,7 +49,7 @@ export default function Home() {
     setItems(prev => prev.filter((_,idx) => idx !== i).map((it,idx) => ({ ...it, no: idx+1 })));
   }
 
-  // ── Auto-extract from image ──────────────────────────────────────
+  // â”€â”€ Auto-extract from image â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   async function extractFromImage(dataUrl, mediaType) {
     setExtracting(true);
     setExtractMsg("Reading receipt with AI...");
@@ -73,15 +73,15 @@ export default function Home() {
         currency: d.currency || f.currency,
         rateNote: d.rate_note || null,
       }));
-      setExtractMsg("✓ Receipt details extracted — please review and confirm");
+      setExtractMsg("âœ“ Receipt details extracted â€” please review and confirm");
     } catch(e) {
       console.error("Extract error:", e.message);
-      setExtractMsg("❌ " + (e.message || "Could not auto-extract") + " — please fill in manually");
+      setExtractMsg("âŒ " + (e.message || "Could not auto-extract") + " â€” please fill in manually");
     }
     setExtracting(false);
   }
 
-  // ── Handle file selection for new receipt ─────────────────────────
+  // â”€â”€ Handle file selection for new receipt â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   function handleNewReceiptFile(e) {
     const file = e.target.files[0];
     if (!file) return;
@@ -96,7 +96,7 @@ export default function Home() {
     e.target.value = "";
   }
 
-  // ── Handle attach image to existing item ──────────────────────────
+  // â”€â”€ Handle attach image to existing item â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   function handleAttachFile(e) {
     const file = e.target.files[0];
     if (!file || uploadingFor === null) return;
@@ -126,7 +126,7 @@ export default function Home() {
       no: prev.length + 1,
       date,
       desc,
-      ref: ref || "—",
+      ref: ref || "â€”",
       orig: orig || `${currency} ${sgdNum.toFixed(2)}`,
       sgd: sgdNum,
       receiptImage: image || null,
@@ -137,7 +137,7 @@ export default function Home() {
     setTab("voucher");
   }
 
-  // ── Gmail search ──────────────────────────────────────────────────
+  // â”€â”€ Gmail search â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   async function searchGmail() {
     setSearching(true);
     setSearchResults([]);
@@ -174,7 +174,7 @@ export default function Home() {
     setTab("voucher");
   }
 
-  // ── Generate PDF ──────────────────────────────────────────────────
+  // â”€â”€ Generate PDF â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   async function generatePDF() {
     setGenerating(true);
     try {
@@ -198,7 +198,7 @@ export default function Home() {
     setGenerating(false);
   }
 
-  // ── Auth screens ──────────────────────────────────────────────────
+  // â”€â”€ Auth screens â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   if (status === "loading") return (
     <div className="min-h-screen flex items-center justify-center">
       <div className="text-gray-400 text-sm">Loading...</div>
@@ -210,7 +210,7 @@ export default function Home() {
       <div className="bg-white rounded-2xl border border-gray-200 p-10 text-center max-w-sm w-full">
         <img src="/redington-logo.svg" alt="Redington" className="h-10 mx-auto mb-6" />
         <div className="text-xl font-medium text-gray-900 mb-1">Payment Voucher</div>
-        <div className="text-sm text-gray-400 mb-8">Ivan Ong – Redington ASEAN</div>
+        <div className="text-sm text-gray-400 mb-8">Ivan Ong â€“ Redington ASEAN</div>
         <button onClick={() => signIn("google")} className="w-full flex items-center justify-center gap-2 border border-gray-200 rounded-xl px-4 py-2.5 text-sm font-medium hover:bg-gray-50 transition">
           <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
           Sign in with Google
@@ -233,7 +233,7 @@ export default function Home() {
           <div>
             <img src="/redington-logo.svg" alt="Redington" className="h-8 mb-1" />
             <h1 className="text-lg font-medium text-gray-900">Payment Voucher</h1>
-            <p className="text-sm text-gray-400">Ivan Ong – Redington ASEAN</p>
+            <p className="text-sm text-gray-400">Ivan Ong â€“ Redington ASEAN</p>
           </div>
           <div className="flex items-center gap-3">
             <span className="text-xs font-medium bg-blue-50 text-blue-700 px-3 py-1 rounded-full">PV4</span>
@@ -251,7 +251,7 @@ export default function Home() {
           ))}
         </div>
 
-        {/* ── VOUCHER TAB ─────────────────────────────────────────── */}
+        {/* â”€â”€ VOUCHER TAB â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
         {tab === "voucher" && (
           <>
             <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden mb-4">
@@ -282,7 +282,7 @@ export default function Home() {
                             <div className="flex items-center justify-center gap-1">
                               <img src={it.receiptImage} alt="receipt" className="w-8 h-8 object-cover rounded border border-gray-200" />
                               <div className="relative text-xs text-gray-400 hover:text-blue-500 cursor-pointer overflow-hidden" title="Replace">
-                                ↺
+                                â†º
                                 <input type="file" accept="image/*" onChange={(e) => { setUploadingFor(i); handleAttachFile(e); }}
                                   style={{position:"absolute",top:0,left:0,width:"100%",height:"100%",opacity:0,cursor:"pointer"}} />
                               </div>
@@ -296,7 +296,7 @@ export default function Home() {
                           )}
                         </td>
                         <td className="px-2 py-2">
-                          <button onClick={() => removeItem(i)} className="text-gray-300 hover:text-red-400 transition text-xs">✕</button>
+                          <button onClick={() => removeItem(i)} className="text-gray-300 hover:text-red-400 transition text-xs">âœ•</button>
                         </td>
                       </tr>
                     ))}
@@ -322,7 +322,7 @@ export default function Home() {
                           <div className="text-sm font-medium text-gray-900 leading-snug">{it.desc}</div>
                           <div className="flex items-center gap-2 mt-1 flex-wrap">
                             <span className="text-xs text-gray-400">{it.date}</span>
-                            {it.ref && it.ref !== "—" && (
+                            {it.ref && it.ref !== "â€”" && (
                               <span className="text-xs text-gray-400 font-mono truncate max-w-32">{it.ref}</span>
                             )}
                           </div>
@@ -343,12 +343,12 @@ export default function Home() {
                           </div>
                         ) : (
                           <div className="relative overflow-hidden border border-dashed border-gray-300 rounded px-2 py-1.5 text-gray-400 cursor-pointer">
-                            <span className="text-xs">📎</span>
+                            <span className="text-xs">ðŸ“Ž</span>
                             <input type="file" accept="image/*" onChange={(e) => { setUploadingFor(i); handleAttachFile(e); }}
                               style={{position:"absolute",top:0,left:0,width:"100%",height:"100%",opacity:0,cursor:"pointer"}} />
                           </div>
                         )}
-                        <button onClick={() => removeItem(i)} className="text-gray-300 hover:text-red-400 transition p-1">✕</button>
+                        <button onClick={() => removeItem(i)} className="text-gray-300 hover:text-red-400 transition p-1">âœ•</button>
                       </div>
                     </div>
                   </div>
@@ -376,23 +376,23 @@ export default function Home() {
           </>
         )}
 
-        {/* ── ADD RECEIPT TAB ─────────────────────────────────────── */}
+        {/* â”€â”€ ADD RECEIPT TAB â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
         {tab === "add" && (
           <div className="bg-white rounded-2xl border border-gray-200 p-6">
             <div className="text-sm font-medium text-gray-700 mb-4">Add new receipt</div>
 
-            {/* Image upload — triggers AI extraction */}
+            {/* Image upload â€” triggers AI extraction */}
             {addForm.imagePreview ? (
               <div className="border-2 border-gray-200 rounded-xl p-4 text-center mb-4">
                 <img src={addForm.imagePreview} alt="preview" className="max-h-48 rounded-lg object-contain mx-auto mb-2" />
                 <div className="flex gap-2 justify-center">
                   <div className="relative text-xs border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition cursor-pointer overflow-hidden">
-                    📷 Camera
+                    ðŸ“· Camera
                     <input type="file" accept="image/*" capture="environment" onChange={handleNewReceiptFile}
                       style={{position:"absolute",top:0,left:0,width:"100%",height:"100%",opacity:0,cursor:"pointer"}} />
                   </div>
                   <div className="relative text-xs border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition cursor-pointer overflow-hidden">
-                    🖼️ Library
+                    ðŸ–¼ï¸ Library
                     <input type="file" accept="image/*" onChange={handleNewReceiptFile}
                       style={{position:"absolute",top:0,left:0,width:"100%",height:"100%",opacity:0,cursor:"pointer"}} />
                   </div>
@@ -403,14 +403,14 @@ export default function Home() {
                 <div className="text-xs text-gray-400 mb-2 text-center">AI will automatically read and fill in the receipt details</div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="relative flex flex-col items-center gap-2 border-2 border-dashed border-gray-200 rounded-xl p-5 hover:border-blue-400 hover:bg-blue-50 transition cursor-pointer overflow-hidden">
-                    <span className="text-3xl">📷</span>
+                    <span className="text-3xl">ðŸ“·</span>
                     <span className="text-sm font-medium text-gray-700">Camera</span>
                     <span className="text-xs text-gray-400">Take new photo</span>
                     <input type="file" accept="image/*" capture="environment" onChange={handleNewReceiptFile}
                       style={{position:"absolute",top:0,left:0,width:"100%",height:"100%",opacity:0,cursor:"pointer"}} />
                   </div>
                   <div className="relative flex flex-col items-center gap-2 border-2 border-dashed border-gray-200 rounded-xl p-5 hover:border-blue-400 hover:bg-blue-50 transition cursor-pointer overflow-hidden">
-                    <span className="text-3xl">🖼️</span>
+                    <span className="text-3xl">ðŸ–¼ï¸</span>
                     <span className="text-sm font-medium text-gray-700">Photo Library</span>
                     <span className="text-xs text-gray-400">Choose existing</span>
                     <input type="file" accept="image/*" onChange={handleNewReceiptFile}
@@ -431,7 +431,7 @@ export default function Home() {
               </div>
             )}
             {!extracting && extractMsg && (
-              <div className={`text-sm mb-4 rounded-xl px-4 py-3 ${extractMsg.startsWith("✓") ? "bg-green-50 text-green-700" : "bg-yellow-50 text-yellow-700"}`}>
+              <div className={`text-sm mb-4 rounded-xl px-4 py-3 ${extractMsg.startsWith("âœ“") ? "bg-green-50 text-green-700" : "bg-yellow-50 text-yellow-700"}`}>
                 {extractMsg}
               </div>
             )}
@@ -439,11 +439,11 @@ export default function Home() {
             {/* Exchange rate note */}
             {addForm.rateNote && (
               <div className="text-xs bg-amber-50 text-amber-700 rounded-xl px-4 py-2 mb-3 flex items-center gap-2">
-                <span>💱</span> {addForm.rateNote}
+                <span>ðŸ’±</span> {addForm.rateNote}
               </div>
             )}
 
-            {/* Form fields — auto-filled after extraction */}
+            {/* Form fields â€” auto-filled after extraction */}
             <div className="grid grid-cols-2 gap-3 mb-3">
               <div>
                 <label className="text-xs text-gray-400 mb-1 block">Date *</label>
@@ -487,7 +487,7 @@ export default function Home() {
           </div>
         )}
 
-        {/* ── SEARCH TAB ──────────────────────────────────────────── */}
+        {/* â”€â”€ SEARCH TAB â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
         {tab === "search" && (
           <div className="bg-white rounded-2xl border border-gray-200 p-4">
             <div className="text-xs font-medium text-gray-400 mb-3">Search Gmail for receipts</div>
