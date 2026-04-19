@@ -1,7 +1,7 @@
 ﻿'use client';
 import { useState, useRef } from 'react';
 import { useSession, signIn, signOut } from 'next-auth/react';
-import jsPDF from 'jspdf';
+import jsPDF from 'jsPDF';
 import autoTable from 'jspdf-autotable';
 
 export default function Page() {
@@ -9,6 +9,8 @@ export default function Page() {
   const cameraInputRef = useRef(null);
   const [rows, setRows] = useState([]);
   const [activeTab, setActiveTab] = useState('voucher');
+  const [searchResults, setSearchResults] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -46,6 +48,30 @@ export default function Page() {
       setIsProcessing(false);
     };
     reader.readAsDataURL(file);
+  };
+
+  async function handleSearch() {
+    setIsSearching(true);
+    try {
+      const res = await fetch(`/api/gmail/search?q=tada OR grab OR receipt`);
+      const data = await res.json();
+      setSearchResults((data.results || []).map(r => {
+        const amtMatch = r.snippet?.match(/(?:SGD|S\$|Total|Charged|Fee)\s?S?\$?\s?([\d.,]+)/i);
+        return { ...r, editAmount: amtMatch ? amtMatch[1].replace(/,/g, '') : "0.00" };
+      }));
+    } catch (e) {}
+    setIsSearching(false);
+  }
+
+  const addFromGmail = (item) => {
+    setRows(prev => [...prev, {
+      date: item.date || new Date().toLocaleDateString('en-GB'),
+      desc: item.subject,
+      ref: item.snippet?.match(/[A-Z0-9]{8,}/)?.[0] || "",
+      sgd: parseFloat(item.editAmount) || 0,
+      image: null // User will snip and upload if attachment is needed
+    }]);
+    setActiveTab('voucher');
   };
 
   async function generatePDF() {
@@ -90,23 +116,22 @@ export default function Page() {
 
   return (
     <div className="max-w-full md:max-w-4xl mx-auto p-4 md:p-6 font-sans bg-slate-50 min-h-screen">
-      {/* Top Left Header */}
       <div className="flex flex-col mb-6 pt-2">
         <h1 className="text-[#009640] font-black text-xl tracking-tight leading-none">REDINGTON</h1>
         <p className="text-slate-400 font-bold text-[10px] uppercase tracking-widest mt-1">Payment Voucher</p>
       </div>
 
-      {/* Tabs - Centered for iOS */}
+      {/* Responsive Navigation */}
       <div className="flex gap-1 mb-6 bg-slate-200 p-1 rounded-xl w-full">
-        <button onClick={() => setActiveTab('voucher')} className={`flex-1 py-3 rounded-lg text-xs font-bold transition-all ${activeTab === 'voucher' ? 'bg-white shadow text-[#009640]' : 'text-slate-500'}`}>Voucher</button>
-        <button onClick={() => setActiveTab('add')} className={`flex-1 py-3 rounded-lg text-xs font-bold transition-all ${activeTab === 'add' ? 'bg-white shadow text-[#009640]' : 'text-slate-500'}`}>+ Add Receipt</button>
-        <button onClick={() => signOut()} className="px-4 py-3 text-slate-400 text-[10px] font-bold uppercase">Exit</button>
+        <button onClick={() => setActiveTab('voucher')} className={`flex-1 py-3 rounded-lg text-[11px] font-bold transition-all ${activeTab === 'voucher' ? 'bg-white shadow text-[#009640]' : 'text-slate-500'}`}>Voucher</button>
+        <button onClick={() => setActiveTab('add')} className={`flex-1 py-3 rounded-lg text-[11px] font-bold transition-all ${activeTab === 'add' ? 'bg-white shadow text-[#009640]' : 'text-slate-500'}`}>+ Upload</button>
+        <button onClick={() => setActiveTab('search')} className={`flex-1 py-3 rounded-lg text-[11px] font-bold transition-all ${activeTab === 'search' ? 'bg-white shadow text-[#009640]' : 'text-slate-500'}`}>Gmail</button>
+        <button onClick={() => signOut()} className="px-3 py-3 text-slate-400 text-[10px] font-bold uppercase">Exit</button>
       </div>
 
       {activeTab === 'voucher' && (
         <div className="space-y-4">
-          {/* Mobile Card Layout */}
-          <div className="block md:hidden space-y-3">
+          <div className="space-y-3">
             {rows.map((row, i) => (
               <div key={i} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm relative">
                 <button onClick={() => setRows(rows.filter((_, idx) => idx !== i))} className="absolute top-4 right-4 text-slate-300">✕</button>
@@ -121,30 +146,12 @@ export default function Page() {
                 </div>
               </div>
             ))}
-            {rows.length === 0 && <div className="text-center py-10 text-slate-400 text-sm">No receipts added yet.</div>}
+            {rows.length === 0 && <div className="text-center py-10 text-slate-400 text-sm italic">No entries yet.</div>}
           </div>
-
-          {/* Desktop Table Layout (hidden on mobile) */}
-          <div className="hidden md:block bg-white rounded-3xl border p-6">
-            <table className="w-full text-xs text-left">
-              <thead><tr className="text-slate-400 border-b text-[10px] font-bold uppercase tracking-widest"><th className="pb-4">Date</th><th className="pb-4 w-1/2">Description</th><th className="pb-4 text-right">SGD</th><th className="pb-4"></th></tr></thead>
-              <tbody className="divide-y divide-slate-50">
-                {rows.map((row, i) => (
-                  <tr key={i} className="group">
-                    <td className="py-4 text-slate-500">{row.date}</td>
-                    <td className="py-4 font-bold text-slate-800">{row.desc}</td>
-                    <td className="py-4 text-right font-black">S$ {row.sgd.toFixed(2)}</td>
-                    <td className="py-4 text-right"><button onClick={() => setRows(rows.filter((_, idx) => idx !== i))} className="text-red-300">✕</button></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          <button onClick={generatePDF} className="fixed bottom-6 left-4 right-4 md:relative md:bottom-0 md:left-0 md:mt-6 bg-[#009640] text-white py-4 rounded-2xl font-black text-lg shadow-xl shadow-green-200">
-            {isGenerating ? "Creating PDF..." : "Download PDF"}
+          <button onClick={generatePDF} className="fixed bottom-6 left-4 right-4 bg-[#009640] text-white py-4 rounded-2xl font-black text-lg shadow-xl shadow-green-200 z-10">
+            {isGenerating ? "Processing..." : "Download PDF"}
           </button>
-          <div className="h-20 md:hidden"></div> {/* Spacer for fixed button */}
+          <div className="h-24"></div>
         </div>
       )}
 
@@ -152,10 +159,41 @@ export default function Page() {
         <div className="flex flex-col gap-4">
           <button onClick={() => cameraInputRef.current.click()} className="aspect-square w-full border-4 border-dashed border-slate-200 rounded-[2.5rem] bg-white flex flex-col items-center justify-center active:bg-slate-50 transition-colors">
             <span className="text-5xl mb-4">📸</span>
-            <span className="font-bold text-slate-700 uppercase tracking-wider text-sm">Capture Receipt</span>
+            <span className="font-bold text-slate-700 uppercase tracking-wider text-sm text-center px-6">Upload Snipped Receipt or Photo</span>
           </button>
           <input type="file" accept="image/*" ref={cameraInputRef} className="hidden" onChange={processImage} />
           {isProcessing && <div className="text-center py-4 animate-pulse text-[#009640] font-bold text-xs uppercase tracking-widest">AI Scanning...</div>}
+        </div>
+      )}
+
+      {activeTab === 'search' && (
+        <div className="space-y-4">
+          <button onClick={handleSearch} disabled={isSearching} className="w-full bg-slate-900 text-white py-4 rounded-2xl font-bold mb-4 shadow-lg shadow-slate-200 active:scale-[0.98] transition-all">
+            {isSearching ? "Searching..." : "🔍 Search Gmail Receipts"}
+          </button>
+          
+          <div className="space-y-3">
+            {searchResults.map((res, i) => (
+              <div key={i} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+                <div className="text-[9px] text-blue-500 font-bold uppercase mb-1">{res.date}</div>
+                <div className="text-sm font-bold text-slate-800 line-clamp-1">{res.subject}</div>
+                <div className="text-[10px] text-slate-400 italic line-clamp-2 mt-1 mb-3">{res.snippet}</div>
+                
+                <div className="flex justify-between items-center pt-3 border-t border-slate-50">
+                  <div className="flex items-center bg-slate-50 px-3 py-1 rounded-lg">
+                    <span className="text-[10px] font-bold text-slate-400 mr-2">S$</span>
+                    <input className="w-16 bg-transparent border-none p-0 font-bold text-slate-900 text-sm focus:ring-0" value={res.editAmount} onChange={e => {
+                      const updated = [...searchResults];
+                      updated[i].editAmount = e.target.value;
+                      setSearchResults(updated);
+                    }} />
+                  </div>
+                  <button onClick={() => addFromGmail(res)} className="bg-[#009640] text-white px-6 py-2 rounded-xl text-xs font-bold">Add to Voucher</button>
+                </div>
+              </div>
+            ))}
+            {searchResults.length === 0 && !isSearching && <div className="text-center py-10 text-slate-400 text-sm italic">Search for Grab, Tada, or Receipt keywords.</div>}
+          </div>
         </div>
       )}
     </div>
