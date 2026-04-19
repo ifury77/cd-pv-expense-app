@@ -5,7 +5,6 @@ export const maxDuration = 30;
 
 export async function GET(req) {
   try {
-<<<<<<< HEAD
     const session = await getServerSession(authOptions);
     if (!session?.accessToken) {
       return Response.json({ error: "Not signed in", results: [] }, { status: 401 });
@@ -24,29 +23,6 @@ export async function GET(req) {
       const err = await listRes.text();
       return Response.json({ error: `Gmail API error: ${listRes.status}`, results: [], detail: err }, { status: 500 });
     }
-=======
-    const { searchParams } = new URL(req.url);
-    const q = searchParams.get("q");
-
-    if (!q) {
-      return Response.json({ results: [] });
-    }
-
-    // TODO: your Gmail logic here
-    const results = [];
-
-    return Response.json({ results });
-
-  } catch (err) {
-    console.error("Gmail API error:", err);
-
-    return Response.json(
-      { results: [], error: err.message },
-      { status: 500 }
-    );
-  }
-}
->>>>>>> 9930379e21d97b39b42191ad63a51ef19e283554
 
     const listData = await listRes.json();
     const threads = listData.threads || [];
