@@ -2,8 +2,6 @@
 import puppeteer from 'puppeteer-core';
 import chromium from '@sparticuz/chromium';
 
-export const maxDuration = 60; // Extend Vercel timeout to 60s
-
 export async function POST(req) {
   let browser = null;
   try {
@@ -14,86 +12,60 @@ export async function POST(req) {
       <html>
       <head>
         <style>
-          body { font-family: Helvetica, Arial, sans-serif; padding: 30px; font-size: 11px; }
-          .header { display: flex; justify-content: space-between; border-bottom: 2px solid #000; padding-bottom: 5px; margin-bottom: 15px; }
-          table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-          th { background: #f2f2f2; border: 1px solid #000; padding: 8px; text-transform: uppercase; font-size: 9px; }
-          td { border: 1px solid #000; padding: 8px; vertical-align: top; }
-          .total-row { background: #eee; font-weight: bold; }
-          .page-break { page-break-before: always; }
-          .attachment-label { background: #1a365d; color: white; padding: 10px; margin-bottom: 10px; font-weight: bold; }
+          body { font-family: Arial, sans-serif; padding: 40px; font-size: 11px; }
+          .logo-container { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+          .logo { height: 40px; }
+          table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+          th { background: #f2f2f2; border: 1px solid #000; padding: 10px; }
+          td { border: 1px solid #000; padding: 10px; }
+          .activity { color: #555; font-size: 10px; margin-top: 4px; font-style: italic; }
         </style>
       </head>
       <body>
-        <div class="header">
-          <div><strong>PAY TO:</strong> Ivan Ong</div>
-          <div style="text-align:right"><strong>Voucher:</strong> ${pvNumber || 'PV4'}<br/><strong>Date:</strong> ${new Date().toLocaleDateString('en-GB')}</div>
+        <div class="logo-container">
+          <img src="https://redington.com/wp-content/themes/redington/images/logo.png" class="logo">
+          <div style="text-align:right"><strong>Voucher No:</strong> ${pvNumber}<br><strong>Date:</strong> ${new Date().toLocaleDateString('en-GB')}</div>
         </div>
-        <h2 style="text-align:center; text-decoration: underline;">PAYMENT VOUCHER</h2>
+        <h2 style="text-align:center">PAYMENT VOUCHER</h2>
         <table>
           <thead>
-            <tr>
-              <th width="5%">No.</th>
-              <th width="15%">Date</th>
-              <th width="40%">Description</th>
-              <th width="15%">Ref</th>
-              <th width="15%">Orig. Amt</th>
-              <th width="10%">SGD</th>
-            </tr>
+            <tr><th>No.</th><th>Date</th><th>Description & Activity</th><th>Amount (SGD)</th></tr>
           </thead>
           <tbody>
             ${items.map((item, i) => `
               <tr>
                 <td align="center">${i + 1}</td>
                 <td>${item.date}</td>
-                <td>${item.desc}</td>
-                <td style="word-break: break-all;">${item.ref || '-'}</td>
-                <td>${item.orig || '-'}</td>
-                <td align="right"><strong>${(item.sgd || 0).toFixed(2)}</strong></td>
+                <td>
+                  <strong>${item.desc}</strong>
+                  <div class="activity">${item.activity || ''}</div>
+                </td>
+                <td align="right">${item.sgd.toFixed(2)}</td>
               </tr>
             `).join('')}
           </tbody>
-          <tr class="total-row">
-            <td colspan="5" align="right">TOTAL CLAIMABLE AMOUNT (SGD)</td>
-            <td align="right">${totalSgd.toFixed(2)}</td>
+          <tr style="font-weight:bold; background:#eee">
+            <td colspan="3" align="right">TOTAL PAYABLE</td>
+            <td align="right">S$ ${totalSgd.toFixed(2)}</td>
           </tr>
         </table>
-
-        ${items.filter(item => item.receiptHtml).map((item, i) => `
-          <div class="page-break"></div>
-          <div class="attachment-label">RECEIPT ATTACHMENT #${i + 1} - ${item.desc}</div>
-          <div style="zoom: 0.8;">${item.receiptHtml}</div>
-        `).join('')}
       </body>
       </html>
     `;
 
     browser = await puppeteer.launch({
-      args: [...chromium.args, '--hide-scrollbars', '--disable-web-security'],
-      defaultViewport: chromium.defaultViewport,
+      args: chromium.args,
       executablePath: await chromium.executablePath(),
       headless: chromium.headless,
     });
-
     const page = await browser.newPage();
     await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
-    const pdfBuffer = await page.pdf({ 
-      format: 'A4', 
-      printBackground: true,
-      margin: { top: '1cm', right: '1cm', bottom: '1cm', left: '1cm' }
-    });
-
+    const pdf = await page.pdf({ format: 'A4', printBackground: true });
     await browser.close();
 
-    return new NextResponse(pdfBuffer, {
-      headers: {
-        'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename=Payment_Voucher_Ivan_Ong.pdf`,
-      },
-    });
-  } catch (error) {
+    return new NextResponse(pdf, { headers: { 'Content-Type': 'application/pdf' } });
+  } catch (e) {
     if (browser) await browser.close();
-    console.error("PDF Generator Error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: e.message }, { status: 500 });
   }
 }
