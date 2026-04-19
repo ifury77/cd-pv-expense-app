@@ -11,8 +11,6 @@ export default function Page() {
   
   const [rows, setRows] = useState([]);
   const [activeTab, setActiveTab] = useState('voucher');
-  const [searchResults, setSearchResults] = useState([]);
-  const [isSearching, setIsSearching] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -30,18 +28,21 @@ export default function Page() {
     setIsProcessing(true);
     const reader = new FileReader();
     reader.onloadend = async () => {
+      const base64Image = reader.result;
       try {
         const res = await fetch('/api/ocr', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ image: reader.result })
+          body: JSON.stringify({ image: base64Image })
         });
         const data = await res.json();
+        
         setRows(prev => [...prev, {
           date: data.date || new Date().toLocaleDateString('en-GB'),
           desc: data.desc || "Scanned Receipt",
           activity: "",
-          sgd: parseFloat(data.amount) || 0
+          sgd: parseFloat(data.amount) || 0,
+          image: base64Image // Store the image for the PDF
         }]);
         setActiveTab('voucher');
       } catch (err) { alert("AI Scan failed."); }
@@ -54,6 +55,8 @@ export default function Page() {
     setIsGenerating(true);
     try {
       const doc = new jsPDF();
+      
+      // Page 1: The Voucher
       doc.setFontSize(22);
       doc.setTextColor(0, 150, 64);
       doc.text('REDINGTON', 14, 20);
@@ -78,6 +81,19 @@ export default function Page() {
           { content: `S$ ${totalSgd.toFixed(2)}`, styles: { halign: 'right', fontStyle: 'bold' } }
         ]],
         footStyles: { fillColor: [248, 250, 252], textColor: [0, 0, 0] }
+      });
+
+      // Subsequent Pages: The Attachments
+      rows.forEach((row, index) => {
+        if (row.image) {
+          doc.addPage();
+          doc.setTextColor(100);
+          doc.setFontSize(12);
+          doc.text(`Attachment ${index + 1}: ${row.desc}`, 14, 20);
+          
+          // Add the receipt image (centered and scaled to fit A4)
+          doc.addImage(row.image, 'JPEG', 15, 30, 180, 0); 
+        }
       });
 
       doc.save(`Voucher_Ivan_Ong.pdf`);
@@ -127,18 +143,18 @@ export default function Page() {
             </table>
           </div>
           <button onClick={generatePDF} disabled={rows.length === 0 || isGenerating} className="w-full bg-blue-600 text-white py-5 rounded-2xl font-bold shadow-lg">
-            {isGenerating ? "Creating PDF..." : "Download PDF Voucher"}
+            {isGenerating ? "Attaching Receipts & Saving..." : "Download PDF Voucher"}
           </button>
         </div>
       )}
 
       {activeTab === 'add' && (
-        <div className="grid grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 gap-6">
           <button onClick={() => cameraInputRef.current.click()} className="p-16 border-2 border-dashed rounded-3xl bg-white flex flex-col items-center">
             <span className="text-4xl mb-4">📸</span>
-            <span className="font-bold text-slate-700">Take Photo</span>
+            <span className="font-bold text-slate-700">Take Photo or Upload Receipt</span>
           </button>
-          <input type="file" accept="image/*" capture="environment" ref={cameraInputRef} className="hidden" onChange={processImage} />
+          <input type="file" accept="image/*" ref={cameraInputRef} className="hidden" onChange={processImage} />
           {isProcessing && <div className="col-span-full text-center p-10 font-bold text-blue-600 animate-pulse">🤖 AI Scanning...</div>}
         </div>
       )}
