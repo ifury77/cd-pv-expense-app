@@ -3,29 +3,17 @@ import { useState, useRef } from 'react';
 import { useSession, signIn, signOut } from 'next-auth/react';
 
 export default function Page() {
-  const { data: session, status } = useSession();
-  const fileInputRef = useRef(null);
-  const cameraInputRef = useRef(null);
-  
+  const { data: session } = useSession();
   const [rows, setRows] = useState([]);
   const [activeTab, setActiveTab] = useState('voucher');
-  const [searchResults, setSearchResults] = useState([]);
-  const [isSearching, setIsSearching] = useState(false);
-  const [isGenerating, setIsGenerating] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const cameraInputRef = useRef(null);
 
-  const totalSgd = rows.reduce((sum, row) => sum + (parseFloat(row.sgd) || 0), 0);
-
-  const updateRow = (index, field, value) => {
-    const updated = [...rows];
-    updated[index][field] = value;
-    setRows(updated);
-  };
-
-  const processImage = async (e) => {
+  const handleOcr = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
     setIsProcessing(true);
+
     const reader = new FileReader();
     reader.onloadend = async () => {
       try {
@@ -36,180 +24,74 @@ export default function Page() {
         });
         const data = await res.json();
         
-        setRows(prev => [...prev, {
-          no: prev.length + 1,
-          date: data.date || new Date().toLocaleDateString('en-GB'),
-          desc: data.desc || "Scanned Receipt",
+        // AUTO-ADD TO TABLE
+        const newEntry = {
+          date: data.date,
+          desc: data.desc,
           activity: "",
-          ref: 'AI Scan',
-          sgd: parseFloat(data.amount) || 0
-        }]);
-        setActiveTab('voucher');
-      } catch (err) { alert("AI could not extract info. Check your connection."); }
-      setIsProcessing(false);
+          sgd: parseFloat(data.amount) || 0,
+        };
+        
+        setRows(prev => [...prev, newEntry]);
+        setActiveTab('voucher'); // Switch back to view the table
+      } catch (err) {
+        alert("Could not extract info. Try a clearer photo.");
+      } finally {
+        setIsProcessing(false);
+      }
     };
     reader.readAsDataURL(file);
   };
 
-  async function handleSearch() {
-    setIsSearching(true);
-    try {
-      const res = await fetch(`/api/gmail/search?q=tada OR grab OR receipt`);
-      const data = await res.json();
-      setSearchResults((data.results || []).map(r => ({
-        ...r, 
-        editAmount: r.snippet?.match(/(?:SGD|S\$|Total|Charged)\s?([\d.,]+)/i)?.[1].replace(/,/g, '') || "0.00"
-      })));
-    } catch (e) {}
-    setIsSearching(false);
-  }
-
-  const addFromGmail = async (item) => {
-    let emailHtml = "";
-    try {
-      const res = await fetch(`/api/gmail/message?id=${item.id}`);
-      const data = await res.json();
-      emailHtml = data.html;
-    } catch (e) {}
-    setRows(prev => [...prev, {
-      no: prev.length + 1,
-      date: item.date || new Date().toLocaleDateString('en-GB'),
-      desc: item.subject,
-      activity: "",
-      ref: item.id?.slice(0, 12),
-      sgd: parseFloat(item.editAmount) || 0,
-      receiptHtml: emailHtml
-    }]);
-    setActiveTab('voucher');
-  };
-
-  async function generatePDF() {
-    setIsGenerating(true);
-    try {
-      const res = await fetch('/api/voucher/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ items: rows, pvNumber: "PV4" })
-      });
-      const blob = await res.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `Voucher_Ivan_Ong.pdf`;
-      a.click();
-    } catch (e) { alert("PDF Error. Ensure you have less than 10 attachments."); }
-    setIsGenerating(false);
-  }
-
-  if (status === "loading") return <div className="p-20 text-center text-slate-400">Loading Portal...</div>;
-  if (!session) return <div className="p-20 text-center"><button onClick={() => signIn('google')} className="bg-[#009640] text-white px-10 py-4 rounded-xl font-bold shadow-lg">Sign In to Redington</button></div>;
+  if (!session) return <div className="p-10 text-center"><button onClick={() => signIn('google')} className="bg-blue-600 text-white p-4 rounded">Sign In</button></div>;
 
   return (
     <div className="max-w-4xl mx-auto p-4">
-      {/* Branding Header */}
-      <div className="flex justify-between items-center mb-8 bg-white p-6 rounded-2xl border shadow-sm">
-        <img src="https://redington.com/wp-content/themes/redington/images/logo.png" alt="Redington" className="h-8" />
-        <button onClick={() => signOut()} className="text-[10px] text-slate-400 uppercase font-bold hover:text-red-500">Sign out</button>
-      </div>
-
-      <div className="flex gap-2 mb-8 bg-slate-100 p-1.5 rounded-2xl w-fit">
-        <button onClick={() => setActiveTab('voucher')} className={`px-6 py-2 rounded-xl text-sm font-bold ${activeTab === 'voucher' ? 'bg-white shadow text-[#009640]' : 'text-slate-500'}`}>My Voucher</button>
-        <button onClick={() => setActiveTab('add')} className={`px-6 py-2 rounded-xl text-sm font-bold ${activeTab === 'add' ? 'bg-white shadow text-[#009640]' : 'text-slate-500'}`}>+ Take Photo / Upload</button>
-        <button onClick={() => setActiveTab('search')} className={`px-6 py-2 rounded-xl text-sm font-bold ${activeTab === 'search' ? 'bg-white shadow text-[#009640]' : 'text-slate-500'}`}>Search Gmail</button>
-      </div>
-
-      {activeTab === 'voucher' && (
-        <div className="space-y-6">
-          <div className="bg-white rounded-2xl border shadow-sm overflow-hidden">
-            <table className="w-full text-sm">
-              <thead className="bg-[#1a202c] text-white">
-                <tr>
-                  <th className="p-4 text-left font-bold text-xs uppercase tracking-wider">Details & Activity Description</th>
-                  <th className="p-4 text-right font-bold text-xs uppercase tracking-wider">SGD</th>
-                  <th className="p-4 text-center font-bold text-xs uppercase tracking-wider">Receipt</th>
-                  <th className="p-4"></th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {rows.map((row, i) => (
-                  <tr key={i} className="hover:bg-slate-50">
-                    <td className="p-4">
-                       <div className="font-bold text-slate-800">{row.desc}</div>
-                       <div className="text-[10px] text-slate-400 mb-2 uppercase">{row.date}</div>
-                       <input 
-                         className="w-full p-2 bg-slate-50 border border-slate-100 rounded text-xs italic text-slate-600 focus:outline-none focus:border-[#009640]" 
-                         placeholder="Enter activity description..."
-                         value={row.activity || ''}
-                         onChange={(e) => updateRow(i, 'activity', e.target.value)}
-                       />
-                    </td>
-                    <td className="p-4 text-right font-black text-slate-900">S$ {(row.sgd || 0).toFixed(2)}</td>
-                    <td className="p-4 text-center">
-                      {row.receiptHtml ? (
-                        <button onClick={() => { const w = window.open(); w.document.write(row.receiptHtml); }} className="text-blue-500 text-[10px] font-bold underline uppercase">View Email</button>
-                      ) : <span className="text-slate-300 text-[10px]">SCANNED</span>}
-                    </td>
-                    <td className="p-4 text-right">
-                      <button onClick={() => setRows(rows.filter((_, idx) => idx !== i))} className="text-slate-300 hover:text-red-500">✕</button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-              <tfoot className="bg-slate-900 text-white font-bold">
-                <tr>
-                  <td className="p-5 text-right uppercase text-[10px] tracking-widest">Total Claim</td>
-                  <td className="p-5 text-right text-lg">S$ {totalSgd.toFixed(2)}</td>
-                  <td colSpan="2"></td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
-          <button onClick={generatePDF} disabled={rows.length === 0 || isGenerating} className="w-full bg-[#3182ce] text-white py-5 rounded-2xl font-bold text-lg shadow-lg hover:bg-blue-600 transition-colors disabled:bg-slate-300">
-            {isGenerating ? "Processing PDF..." : "Download PDF Voucher"}
-          </button>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold">Redington Expense</h1>
+        <div className="flex gap-4">
+          <button onClick={() => setActiveTab('voucher')} className={`p-2 ${activeTab === 'voucher' ? 'border-b-2 border-blue-600 font-bold' : ''}`}>My Voucher</button>
+          <button onClick={() => setActiveTab('add')} className={`p-2 ${activeTab === 'add' ? 'border-b-2 border-blue-600 font-bold' : ''}`}>+ Snap Receipt</button>
         </div>
-      )}
+      </div>
 
       {activeTab === 'add' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <button onClick={() => cameraInputRef.current.click()} className="p-16 border-2 border-dashed border-slate-200 rounded-3xl bg-white hover:border-[#009640] transition-colors flex flex-col items-center">
-            <span className="text-4xl mb-4">📸</span>
-            <span className="font-bold text-slate-700">Take Photo</span>
-          </button>
-          <button onClick={() => fileInputRef.current.click()} className="p-16 border-2 border-dashed border-slate-200 rounded-3xl bg-white hover:border-[#009640] transition-colors flex flex-col items-center">
-            <span className="text-4xl mb-4">📁</span>
-            <span className="font-bold text-slate-700">Upload File</span>
-          </button>
-          <input type="file" accept="image/*" capture="environment" ref={cameraInputRef} className="hidden" onChange={processImage} />
-          <input type="file" ref={fileInputRef} className="hidden" onChange={processImage} />
-          {isProcessing && <div className="col-span-full text-center p-10 font-bold text-[#009640] animate-pulse">🤖 AI is reading your receipt...</div>}
+        <div className="text-center p-20 border-2 border-dashed rounded-3xl bg-white">
+          {isProcessing ? (
+            <div className="animate-pulse text-blue-600 font-bold text-xl">🤖 AI is reading & adding to voucher...</div>
+          ) : (
+            <button onClick={() => cameraInputRef.current.click()} className="bg-blue-600 text-white px-10 py-5 rounded-2xl text-xl font-bold">📸 TAKE PHOTO</button>
+          )}
+          <input type="file" accept="image/*" capture="environment" ref={cameraInputRef} className="hidden" onChange={handleOcr} />
         </div>
       )}
 
-      {activeTab === 'search' && (
-        <div className="space-y-4">
-          <button onClick={handleSearch} disabled={isSearching} className="w-full bg-slate-900 text-white py-4 rounded-xl font-bold">
-            {isSearching ? "Searching Gmail..." : "Fetch Recent Transport Receipts"}
-          </button>
-          <div className="grid gap-3">
-            {searchResults.map((res, i) => (
-              <div key={i} className="p-4 border rounded-2xl flex justify-between items-center bg-white shadow-sm">
-                <div className="w-2/3">
-                  <div className="text-[10px] text-blue-600 font-bold uppercase">{res.date}</div>
-                  <div className="text-sm font-bold text-slate-800 truncate">{res.subject}</div>
-                </div>
-                <div className="flex gap-2 items-center">
-                  <input className="border border-slate-200 w-20 p-2 text-xs font-bold rounded-lg" value={res.editAmount} onChange={e => {
-                    const updated = [...searchResults];
-                    updated[i].editAmount = e.target.value;
-                    setSearchResults(updated);
-                  }} />
-                  <button onClick={() => addFromGmail(res)} className="bg-[#009640] text-white px-4 py-2 rounded-lg text-xs font-bold">Add</button>
-                </div>
-              </div>
+      {activeTab === 'voucher' && (
+        <table className="w-full border-collapse bg-white rounded-xl shadow-sm overflow-hidden">
+          <thead className="bg-slate-900 text-white">
+            <tr><th className="p-4 text-left">Description & Activity</th><th className="p-4 text-right">Amount (SGD)</th></tr>
+          </thead>
+          <tbody>
+            {rows.map((row, i) => (
+              <tr key={i} className="border-b">
+                <td className="p-4">
+                  <div className="font-bold">{row.desc}</div>
+                  <input 
+                    placeholder="Describe activity..." 
+                    className="w-full text-xs text-blue-600 border-b border-transparent focus:border-blue-200 outline-none"
+                    value={row.activity}
+                    onChange={(e) => {
+                      const updated = [...rows];
+                      updated[i].activity = e.target.value;
+                      setRows(updated);
+                    }}
+                  />
+                </td>
+                <td className="p-4 text-right font-bold">S$ {row.sgd.toFixed(2)}</td>
+              </tr>
             ))}
-          </div>
-        </div>
+          </tbody>
+        </table>
       )}
     </div>
   );
