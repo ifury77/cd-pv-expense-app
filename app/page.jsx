@@ -35,6 +35,7 @@ export default function Page() {
           body: JSON.stringify({ image: reader.result })
         });
         const data = await res.json();
+        
         setRows(prev => [...prev, {
           no: prev.length + 1,
           date: data.date || new Date().toLocaleDateString('en-GB'),
@@ -44,7 +45,7 @@ export default function Page() {
           sgd: parseFloat(data.amount) || 0
         }]);
         setActiveTab('voucher');
-      } catch (err) { alert("OCR Failed"); }
+      } catch (err) { alert("AI could not extract info. Check your connection."); }
       setIsProcessing(false);
     };
     reader.readAsDataURL(file);
@@ -70,7 +71,6 @@ export default function Page() {
       const data = await res.json();
       emailHtml = data.html;
     } catch (e) {}
-
     setRows(prev => [...prev, {
       no: prev.length + 1,
       date: item.date || new Date().toLocaleDateString('en-GB'),
@@ -97,142 +97,114 @@ export default function Page() {
       a.href = url;
       a.download = `Voucher_Ivan_Ong.pdf`;
       a.click();
-    } catch (e) { alert("PDF Error"); }
+    } catch (e) { alert("PDF Error. Ensure you have less than 10 attachments."); }
     setIsGenerating(false);
   }
 
-  if (status === "loading") return <div className="p-20 text-center">Loading Portal...</div>;
-  if (!session) return <div className="p-20 text-center"><button onClick={() => signIn('google')} className="bg-blue-600 text-white px-8 py-3 rounded-xl font-bold">Sign In to Redington</button></div>;
+  if (status === "loading") return <div className="p-20 text-center text-slate-400">Loading Portal...</div>;
+  if (!session) return <div className="p-20 text-center"><button onClick={() => signIn('google')} className="bg-[#009640] text-white px-10 py-4 rounded-xl font-bold shadow-lg">Sign In to Redington</button></div>;
 
   return (
     <div className="max-w-4xl mx-auto p-4">
-      {/* Header with Redington Style */}
+      {/* Branding Header */}
       <div className="flex justify-between items-center mb-8 bg-white p-6 rounded-2xl border shadow-sm">
-        <div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight">REDINGTON <span className="text-blue-600 font-light">EXPENSE</span></h1>
-          <p className="text-xs text-slate-400 font-medium">Voucher Portal • {session.user.email}</p>
-        </div>
-        <button onClick={() => signOut()} className="bg-slate-50 text-slate-400 text-[10px] px-3 py-1 rounded-full uppercase font-bold tracking-widest hover:bg-red-50 hover:text-red-500 transition-colors">Sign out</button>
+        <img src="https://redington.com/wp-content/themes/redington/images/logo.png" alt="Redington" className="h-8" />
+        <button onClick={() => signOut()} className="text-[10px] text-slate-400 uppercase font-bold hover:text-red-500">Sign out</button>
       </div>
 
-      {/* Navigation Tabs */}
       <div className="flex gap-2 mb-8 bg-slate-100 p-1.5 rounded-2xl w-fit">
-        <button onClick={() => setActiveTab('voucher')} className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === 'voucher' ? 'bg-white shadow-md text-blue-600' : 'text-slate-500 hover:text-slate-700'}`}>My Voucher</button>
-        <button onClick={() => setActiveTab('add')} className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === 'add' ? 'bg-white shadow-md text-blue-600' : 'text-slate-500 hover:text-slate-700'}`}>+ Take Photo</button>
-        <button onClick={() => setActiveTab('search')} className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === 'search' ? 'bg-white shadow-md text-blue-600' : 'text-slate-500 hover:text-slate-700'}`}>Search Gmail</button>
+        <button onClick={() => setActiveTab('voucher')} className={`px-6 py-2 rounded-xl text-sm font-bold ${activeTab === 'voucher' ? 'bg-white shadow text-[#009640]' : 'text-slate-500'}`}>My Voucher</button>
+        <button onClick={() => setActiveTab('add')} className={`px-6 py-2 rounded-xl text-sm font-bold ${activeTab === 'add' ? 'bg-white shadow text-[#009640]' : 'text-slate-500'}`}>+ Take Photo / Upload</button>
+        <button onClick={() => setActiveTab('search')} className={`px-6 py-2 rounded-xl text-sm font-bold ${activeTab === 'search' ? 'bg-white shadow text-[#009640]' : 'text-slate-500'}`}>Search Gmail</button>
       </div>
 
-      {/* Main Voucher View */}
       {activeTab === 'voucher' && (
-        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-          <div className="bg-white rounded-2xl border shadow-sm overflow-hidden mb-6">
+        <div className="space-y-6">
+          <div className="bg-white rounded-2xl border shadow-sm overflow-hidden">
             <table className="w-full text-sm">
-              <thead className="bg-slate-900 text-white">
+              <thead className="bg-[#1a202c] text-white">
                 <tr>
-                  <th className="p-4 text-left font-bold uppercase text-[10px] tracking-widest">Details & Activity Description</th>
-                  <th className="p-4 text-right font-bold uppercase text-[10px] tracking-widest">Amount</th>
-                  <th className="p-4 text-center font-bold uppercase text-[10px] tracking-widest">Receipt</th>
-                  <th className="p-4 text-right"></th>
+                  <th className="p-4 text-left font-bold text-xs uppercase tracking-wider">Details & Activity Description</th>
+                  <th className="p-4 text-right font-bold text-xs uppercase tracking-wider">SGD</th>
+                  <th className="p-4 text-center font-bold text-xs uppercase tracking-wider">Receipt</th>
+                  <th className="p-4"></th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
-                {rows.length === 0 ? (
-                  <tr><td colSpan="4" className="p-20 text-center text-slate-300 italic">No items added yet. Search Gmail or snap a photo to begin.</td></tr>
-                ) : rows.map((row, i) => (
-                  <tr key={i} className="hover:bg-slate-50/50 transition-colors">
+              <tbody className="divide-y">
+                {rows.map((row, i) => (
+                  <tr key={i} className="hover:bg-slate-50">
                     <td className="p-4">
-                       <div className="font-bold text-slate-800 mb-1">{row.desc}</div>
-                       <div className="flex items-center gap-2 mb-2">
-                         <span className="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded font-mono uppercase">{row.date}</span>
-                       </div>
+                       <div className="font-bold text-slate-800">{row.desc}</div>
+                       <div className="text-[10px] text-slate-400 mb-2 uppercase">{row.date}</div>
                        <input 
-                         className="w-full p-2 bg-blue-50/30 border border-blue-100/50 rounded-lg text-xs italic text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-100 placeholder:text-slate-300" 
-                         placeholder="Describe activity (e.g., Lunch meeting with client)"
+                         className="w-full p-2 bg-slate-50 border border-slate-100 rounded text-xs italic text-slate-600 focus:outline-none focus:border-[#009640]" 
+                         placeholder="Enter activity description..."
                          value={row.activity || ''}
                          onChange={(e) => updateRow(i, 'activity', e.target.value)}
                        />
                     </td>
-                    <td className="p-4 text-right align-top">
-                      <div className="font-black text-slate-900 text-base">S$ { (row.sgd || 0).toFixed(2) }</div>
-                    </td>
-                    <td className="p-4 text-center align-top">
+                    <td className="p-4 text-right font-black text-slate-900">S$ {(row.sgd || 0).toFixed(2)}</td>
+                    <td className="p-4 text-center">
                       {row.receiptHtml ? (
-                        <button onClick={() => { const w = window.open(); w.document.write(row.receiptHtml); }} className="inline-flex items-center gap-1.5 text-blue-600 text-[10px] font-bold uppercase tracking-wider bg-blue-50 px-3 py-1.5 rounded-lg hover:bg-blue-100">
-                          View Email
-                        </button>
-                      ) : <span className="text-slate-300 text-[10px] uppercase font-bold tracking-widest">Scanned</span>}
+                        <button onClick={() => { const w = window.open(); w.document.write(row.receiptHtml); }} className="text-blue-500 text-[10px] font-bold underline uppercase">View Email</button>
+                      ) : <span className="text-slate-300 text-[10px]">SCANNED</span>}
                     </td>
-                    <td className="p-4 text-right align-top">
-                      <button onClick={() => setRows(rows.filter((_, idx) => idx !== i))} className="text-slate-200 hover:text-red-500 transition-colors">✕</button>
+                    <td className="p-4 text-right">
+                      <button onClick={() => setRows(rows.filter((_, idx) => idx !== i))} className="text-slate-300 hover:text-red-500">✕</button>
                     </td>
                   </tr>
                 ))}
               </tbody>
-              <tfoot className="bg-slate-50 border-t">
+              <tfoot className="bg-slate-900 text-white font-bold">
                 <tr>
-                  <td className="p-6 text-right font-bold uppercase text-[10px] text-slate-400 tracking-widest">Total Claim Amount</td>
-                  <td className="p-6 text-right font-black text-xl text-blue-600">S$ {totalSgd.toFixed(2)}</td>
+                  <td className="p-5 text-right uppercase text-[10px] tracking-widest">Total Claim</td>
+                  <td className="p-5 text-right text-lg">S$ {totalSgd.toFixed(2)}</td>
                   <td colSpan="2"></td>
                 </tr>
               </tfoot>
             </table>
           </div>
-          <button onClick={generatePDF} disabled={rows.length === 0 || isGenerating} className="w-full bg-blue-600 hover:bg-blue-700 text-white py-5 rounded-2xl font-black text-lg shadow-xl shadow-blue-200 transition-all active:scale-[0.98] disabled:bg-slate-200 disabled:shadow-none">
-            {isGenerating ? "Assembling PDF Document..." : "Download Professional PDF"}
+          <button onClick={generatePDF} disabled={rows.length === 0 || isGenerating} className="w-full bg-[#3182ce] text-white py-5 rounded-2xl font-bold text-lg shadow-lg hover:bg-blue-600 transition-colors disabled:bg-slate-300">
+            {isGenerating ? "Processing PDF..." : "Download PDF Voucher"}
           </button>
         </div>
       )}
 
-      {/* Add Photo/Camera Section */}
       {activeTab === 'add' && (
-        <div className="animate-in fade-in zoom-in-95 duration-300">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <button onClick={() => cameraInputRef.current.click()} className="group p-16 border-2 border-dashed border-blue-200 rounded-[2rem] bg-white hover:bg-blue-50 hover:border-blue-400 transition-all flex flex-col items-center">
-              <div className="w-20 h-20 bg-blue-50 rounded-full flex items-center justify-center text-4xl mb-4 group-hover:scale-110 transition-transform">📸</div>
-              <span className="font-black text-blue-600 text-xl tracking-tight">Snap Receipt</span>
-              <span className="text-blue-300 text-xs font-medium mt-1">Uses mobile camera</span>
-            </button>
-            <button onClick={() => fileInputRef.current.click()} className="group p-16 border-2 border-dashed border-slate-200 rounded-[2rem] bg-white hover:bg-slate-50 hover:border-slate-400 transition-all flex flex-col items-center">
-              <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center text-4xl mb-4 group-hover:scale-110 transition-transform">📁</div>
-              <span className="font-black text-slate-600 text-xl tracking-tight">Upload File</span>
-              <span className="text-slate-300 text-xs font-medium mt-1">Image or PDF</span>
-            </button>
-          </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <button onClick={() => cameraInputRef.current.click()} className="p-16 border-2 border-dashed border-slate-200 rounded-3xl bg-white hover:border-[#009640] transition-colors flex flex-col items-center">
+            <span className="text-4xl mb-4">📸</span>
+            <span className="font-bold text-slate-700">Take Photo</span>
+          </button>
+          <button onClick={() => fileInputRef.current.click()} className="p-16 border-2 border-dashed border-slate-200 rounded-3xl bg-white hover:border-[#009640] transition-colors flex flex-col items-center">
+            <span className="text-4xl mb-4">📁</span>
+            <span className="font-bold text-slate-700">Upload File</span>
+          </button>
           <input type="file" accept="image/*" capture="environment" ref={cameraInputRef} className="hidden" onChange={processImage} />
           <input type="file" ref={fileInputRef} className="hidden" onChange={processImage} />
-          {isProcessing && (
-            <div className="mt-8 text-center p-12 bg-white rounded-3xl border shadow-sm">
-              <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-              <div className="text-slate-800 font-black text-lg">AI ANALYZING RECEIPT</div>
-              <p className="text-slate-400 text-sm">Identifying date, merchant, and total SGD...</p>
-            </div>
-          )}
+          {isProcessing && <div className="col-span-full text-center p-10 font-bold text-[#009640] animate-pulse">🤖 AI is reading your receipt...</div>}
         </div>
       )}
 
-      {/* Gmail Search Section */}
       {activeTab === 'search' && (
-        <div className="animate-in fade-in slide-in-from-top-2 duration-300 space-y-4">
-          <button onClick={handleSearch} disabled={isSearching} className="w-full bg-slate-900 hover:bg-black text-white py-4 rounded-2xl font-black transition-all active:scale-[0.98]">
-            {isSearching ? "Synchronizing with Gmail..." : "Auto-Fetch Grab & Tada Receipts"}
+        <div className="space-y-4">
+          <button onClick={handleSearch} disabled={isSearching} className="w-full bg-slate-900 text-white py-4 rounded-xl font-bold">
+            {isSearching ? "Searching Gmail..." : "Fetch Recent Transport Receipts"}
           </button>
-          <div className="grid gap-4">
+          <div className="grid gap-3">
             {searchResults.map((res, i) => (
-              <div key={i} className="p-5 border rounded-2xl flex justify-between items-center bg-white shadow-sm hover:shadow-md transition-shadow">
+              <div key={i} className="p-4 border rounded-2xl flex justify-between items-center bg-white shadow-sm">
                 <div className="w-2/3">
-                  <div className="text-[10px] text-blue-600 font-bold uppercase tracking-widest mb-1">{res.date}</div>
-                  <div className="text-sm font-black text-slate-800 truncate">{res.subject}</div>
+                  <div className="text-[10px] text-blue-600 font-bold uppercase">{res.date}</div>
+                  <div className="text-sm font-bold text-slate-800 truncate">{res.subject}</div>
                 </div>
-                <div className="flex gap-3 items-center">
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-400">S$</span>
-                    <input className="border-slate-200 border w-24 pl-8 pr-2 py-2 text-sm font-black rounded-xl bg-slate-50 focus:bg-white transition-colors" value={res.editAmount} onChange={e => {
-                      const updated = [...searchResults];
-                      updated[i].editAmount = e.target.value;
-                      setSearchResults(updated);
-                    }} />
-                  </div>
-                  <button onClick={() => addFromGmail(res)} className="bg-blue-600 text-white px-5 py-2 rounded-xl text-xs font-black uppercase tracking-tight hover:bg-blue-700 transition-colors">Add</button>
+                <div className="flex gap-2 items-center">
+                  <input className="border border-slate-200 w-20 p-2 text-xs font-bold rounded-lg" value={res.editAmount} onChange={e => {
+                    const updated = [...searchResults];
+                    updated[i].editAmount = e.target.value;
+                    setSearchResults(updated);
+                  }} />
+                  <button onClick={() => addFromGmail(res)} className="bg-[#009640] text-white px-4 py-2 rounded-lg text-xs font-bold">Add</button>
                 </div>
               </div>
             ))}
