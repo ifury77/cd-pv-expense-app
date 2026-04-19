@@ -85,7 +85,7 @@ export default function Home() {
     setSearchResults([]);
     try {
       const res = await fetch(`/api/gmail/search?q=${encodeURIComponent(searchQ)}`);
-      const data = await res.json();
+      const data = await res.json(); // + try/catch OR res.ok check
       setSearchResults(data.results || []);
     } catch(e) { alert("Search failed: " + e.message); }
     setSearching(false);
