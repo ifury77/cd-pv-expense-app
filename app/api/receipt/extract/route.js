@@ -1,4 +1,4 @@
-export async function POST(req) {
+﻿export async function POST(req) {
   try {
     const { imageBase64, mediaType } = await req.json();
     if (!imageBase64) return Response.json({ error: "No image provided" }, { status: 400 });
@@ -27,10 +27,10 @@ export async function POST(req) {
               {
                 type: "text",
                 text: `You are an expert receipt parser for a Singapore-based expense system. 
-Extract information from this receipt image and return ONLY a valid JSON object — no markdown, no backticks, no explanation.
+Extract information from this receipt image and return ONLY a valid JSON object â€” no markdown, no backticks, no explanation.
 
 The receipt may be in any language or currency (SGD, IDR, MYR, THB, USD, etc).
-For Indonesian receipts: Rp = IDR. For Malaysian: RM = MYR. For Thai: ฿ = THB.
+For Indonesian receipts: Rp = IDR. For Malaysian: RM = MYR. For Thai: à¸¿ = THB.
 
 Return this exact JSON structure:
 {

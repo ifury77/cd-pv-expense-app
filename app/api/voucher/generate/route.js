@@ -1,4 +1,4 @@
-import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
+﻿import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
 
 export const maxDuration = 60;
 
@@ -162,7 +162,7 @@ export async function POST(req) {
       rPage.drawText(`Source: ${item.receiptSource || "uploaded"}`, { x: ML, y: 12, size: 6.5, font: fontR, color: gray });
 
     } else {
-      // Gmail or manual — render as a styled receipt card
+      // Gmail or manual â€” render as a styled receipt card
       rPage.drawRectangle({ x: ML, y: 50, width: 4, height: A4H - 32 - 70, color: brandColor });
 
       // Get text lines from HTML or item data
@@ -173,14 +173,14 @@ export async function POST(req) {
           .filter(l => l.length > 1 && l.length < 200)
           // Remove lines that are just URLs, tracking pixels, social links
           .filter(l => !l.match(/^https?:\/\//i))
-          .filter(l => !l.match(/^(follow us|unsubscribe|privacy|copyright|©)/i))
+          .filter(l => !l.match(/^(follow us|unsubscribe|privacy|copyright|Â©)/i))
           .slice(0, 40);
       } else {
         // Manual entry
         lines = [
           `Date: ${item.date}`,
           `Description: ${item.desc}`,
-          `Reference: ${item.ref || "—"}`,
+          `Reference: ${item.ref || "â€”"}`,
           `Amount: ${item.orig || "SGD " + item.sgd.toFixed(2)}`,
           `SGD Equivalent: SGD ${item.sgd.toFixed(2)}`,
         ];
@@ -206,7 +206,7 @@ export async function POST(req) {
         while (display.length > 2 && fontR.widthOfTextAtSize(display, fSize) > maxW) {
           display = display.slice(0, -1);
         }
-        if (display !== line) display += "…";
+        if (display !== line) display += "â€¦";
 
         rPage.drawText(display, { x: ML + 10, y: ry, size: fSize, font: fFont, color: fColor });
 
@@ -219,8 +219,8 @@ export async function POST(req) {
         }
       }
 
-      const sourceLabel = item.receiptHtml ? `Gmail receipt — ${item.receiptSource || "sgp69k@gmail.com"}` : `Manual entry`;
-      rPage.drawText(`${sourceLabel} — ${pvNumber}`, { x: ML, y: 12, size: 6.5, font: fontR, color: gray });
+      const sourceLabel = item.receiptHtml ? `Gmail receipt â€” ${item.receiptSource || "sgp69k@gmail.com"}` : `Manual entry`;
+      rPage.drawText(`${sourceLabel} â€” ${pvNumber}`, { x: ML, y: 12, size: 6.5, font: fontR, color: gray });
     }
   }
 
