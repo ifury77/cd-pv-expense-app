@@ -1,7 +1,7 @@
 ﻿'use client';
 import { useState, useRef } from 'react';
 import { useSession, signIn, signOut } from 'next-auth/react';
-import jsPDF from 'jsPDF';
+import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
 export default function Page() {
@@ -69,7 +69,7 @@ export default function Page() {
       desc: item.subject,
       ref: item.snippet?.match(/[A-Z0-9]{8,}/)?.[0] || "",
       sgd: parseFloat(item.editAmount) || 0,
-      image: null // User will snip and upload if attachment is needed
+      image: null
     }]);
     setActiveTab('voucher');
   };
@@ -112,7 +112,7 @@ export default function Page() {
     setIsGenerating(false);
   }
 
-  if (!session) return <div className="flex h-screen items-center justify-center p-6"><button onClick={() => signIn('google')} className="w-full max-w-sm bg-[#009640] text-white py-4 rounded-2xl font-bold shadow-lg">Sign In with Google</button></div>;
+  if (!session) return <div className="flex h-screen items-center justify-center p-6 bg-white"><button onClick={() => signIn('google')} className="w-full max-w-sm bg-[#009640] text-white py-4 rounded-2xl font-bold shadow-lg">Sign In with Google</button></div>;
 
   return (
     <div className="max-w-full md:max-w-4xl mx-auto p-4 md:p-6 font-sans bg-slate-50 min-h-screen">
@@ -121,7 +121,6 @@ export default function Page() {
         <p className="text-slate-400 font-bold text-[10px] uppercase tracking-widest mt-1">Payment Voucher</p>
       </div>
 
-      {/* Responsive Navigation */}
       <div className="flex gap-1 mb-6 bg-slate-200 p-1 rounded-xl w-full">
         <button onClick={() => setActiveTab('voucher')} className={`flex-1 py-3 rounded-lg text-[11px] font-bold transition-all ${activeTab === 'voucher' ? 'bg-white shadow text-[#009640]' : 'text-slate-500'}`}>Voucher</button>
         <button onClick={() => setActiveTab('add')} className={`flex-1 py-3 rounded-lg text-[11px] font-bold transition-all ${activeTab === 'add' ? 'bg-white shadow text-[#009640]' : 'text-slate-500'}`}>+ Upload</button>
@@ -168,32 +167,26 @@ export default function Page() {
 
       {activeTab === 'search' && (
         <div className="space-y-4">
-          <button onClick={handleSearch} disabled={isSearching} className="w-full bg-slate-900 text-white py-4 rounded-2xl font-bold mb-4 shadow-lg shadow-slate-200 active:scale-[0.98] transition-all">
+          <button onClick={handleSearch} disabled={isSearching} className="w-full bg-slate-900 text-white py-4 rounded-2xl font-bold mb-4 active:scale-[0.98] transition-all">
             {isSearching ? "Searching..." : "🔍 Search Gmail Receipts"}
           </button>
-          
-          <div className="space-y-3">
-            {searchResults.map((res, i) => (
-              <div key={i} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
-                <div className="text-[9px] text-blue-500 font-bold uppercase mb-1">{res.date}</div>
-                <div className="text-sm font-bold text-slate-800 line-clamp-1">{res.subject}</div>
-                <div className="text-[10px] text-slate-400 italic line-clamp-2 mt-1 mb-3">{res.snippet}</div>
-                
-                <div className="flex justify-between items-center pt-3 border-t border-slate-50">
-                  <div className="flex items-center bg-slate-50 px-3 py-1 rounded-lg">
-                    <span className="text-[10px] font-bold text-slate-400 mr-2">S$</span>
-                    <input className="w-16 bg-transparent border-none p-0 font-bold text-slate-900 text-sm focus:ring-0" value={res.editAmount} onChange={e => {
-                      const updated = [...searchResults];
-                      updated[i].editAmount = e.target.value;
-                      setSearchResults(updated);
-                    }} />
-                  </div>
-                  <button onClick={() => addFromGmail(res)} className="bg-[#009640] text-white px-6 py-2 rounded-xl text-xs font-bold">Add to Voucher</button>
+          {searchResults.map((res, i) => (
+            <div key={i} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm mb-3">
+              <div className="text-[9px] text-blue-500 font-bold uppercase mb-1">{res.date}</div>
+              <div className="text-sm font-bold text-slate-800 line-clamp-1">{res.subject}</div>
+              <div className="flex justify-between items-center mt-3 pt-3 border-t border-slate-50">
+                <div className="flex items-center bg-slate-50 px-3 py-1 rounded-lg">
+                  <span className="text-[10px] font-bold text-slate-400 mr-2">S$</span>
+                  <input className="w-16 bg-transparent border-none p-0 font-bold text-slate-900 text-sm focus:ring-0" value={res.editAmount} onChange={e => {
+                    const updated = [...searchResults];
+                    updated[i].editAmount = e.target.value;
+                    setSearchResults(updated);
+                  }} />
                 </div>
+                <button onClick={() => addFromGmail(res)} className="bg-[#009640] text-white px-6 py-2 rounded-xl text-xs font-bold">Add</button>
               </div>
-            ))}
-            {searchResults.length === 0 && !isSearching && <div className="text-center py-10 text-slate-400 text-sm italic">Search for Grab, Tada, or Receipt keywords.</div>}
-          </div>
+            </div>
+          ))}
         </div>
       )}
     </div>
