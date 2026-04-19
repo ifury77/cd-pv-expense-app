@@ -1,5 +1,5 @@
 ﻿'use client';
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { useSession, signIn, signOut } from 'next-auth/react';
 
 export default function Page() {
@@ -13,9 +13,12 @@ export default function Page() {
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [formData, setFormData] = useState({ date: '', desc: '', ref: '', sgd: '', orig: '', imagePreview: null });
 
   const totalSgd = rows.reduce((sum, row) => sum + row.sgd, 0);
+
+  const handleDelete = (index) => {
+    setRows(prev => prev.filter((_, i) => i !== index).map((row, i) => ({ ...row, no: i + 1 })));
+  };
 
   async function handleSearch() {
     setIsSearching(true);
@@ -60,13 +63,14 @@ export default function Page() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ items: rows, pvNumber: "PV4" })
       });
+      if (!res.ok) throw new Error("PDF Generation failed");
       const blob = await res.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
       a.download = `PV_Ivan_Ong_PV4.pdf`;
       a.click();
-    } catch (e) { alert("PDF failed"); }
+    } catch (e) { alert(e.message); }
     setIsGenerating(false);
   }
 
@@ -94,11 +98,8 @@ export default function Page() {
         </div>
 
         <div className="flex gap-2 mb-6 bg-gray-100 p-1 rounded-xl w-fit">
-          {['voucher', 'add', 'search'].map(tab => (
-            <button key={tab} onClick={() => setActiveTab(tab)} className={`px-4 py-2 rounded-lg text-sm font-medium transition ${activeTab === tab ? 'bg-white shadow-sm text-blue-600' : 'text-gray-500'}`}>
-              {tab === 'voucher' ? 'Voucher' : tab === 'add' ? '+ Add Receipt' : 'Search Gmail'}
-            </button>
-          ))}
+          <button onClick={() => setActiveTab('voucher')} className={`px-4 py-2 rounded-lg text-sm font-medium transition ${activeTab === 'voucher' ? 'bg-white shadow-sm text-blue-600' : 'text-gray-500'}`}>Voucher</button>
+          <button onClick={() => setActiveTab('search')} className={`px-4 py-2 rounded-lg text-sm font-medium transition ${activeTab === 'search' ? 'bg-white shadow-sm text-blue-600' : 'text-gray-500'}`}>Search Gmail</button>
         </div>
 
         {activeTab === 'voucher' && (
@@ -107,15 +108,18 @@ export default function Page() {
               <table className="w-full text-sm">
                 <thead className="bg-gray-50 border-b">
                   <tr>
+                    <th className="px-4 py-3 text-left text-gray-500 font-medium w-10">#</th>
                     <th className="px-4 py-3 text-left text-gray-500 font-medium">Date</th>
                     <th className="px-4 py-3 text-left text-gray-500 font-medium">Description</th>
                     <th className="px-4 py-3 text-right text-gray-500 font-medium">SGD</th>
-                    <th className="px-4 py-3 text-center text-gray-500 font-medium">Receipt</th><th className="px-4 py-3 text-right text-gray-500 font-medium">Action</th>
+                    <th className="px-4 py-3 text-center text-gray-500 font-medium">Receipt</th>
+                    <th className="px-4 py-3 text-right text-gray-500 font-medium">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
                   {rows.map((row, i) => (
                     <tr key={i} className="hover:bg-gray-50">
+                      <td className="px-4 py-3 text-gray-400">{row.no}</td>
                       <td className="px-4 py-3 text-gray-600">{row.date}</td>
                       <td className="px-4 py-3 text-gray-900 font-medium">{row.desc}</td>
                       <td className="px-4 py-3 text-right font-semibold">{row.sgd.toFixed(2)}</td>
@@ -124,6 +128,9 @@ export default function Page() {
                           <button onClick={() => { const w = window.open(); w.document.write(row.receiptHtml); }} className="text-blue-500 hover:underline text-xs">View Email</button>
                         ) : <span className="text-gray-300">—</span>}
                       </td>
+                      <td className="px-4 py-3 text-right">
+                        <button onClick={() => handleDelete(i)} className="text-red-500 hover:bg-red-50 px-2 py-1 rounded">✕</button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -131,13 +138,13 @@ export default function Page() {
                   <tr>
                     <td colSpan="3" className="px-4 py-4 text-right font-bold">TOTAL SGD</td>
                     <td className="px-4 py-4 text-right font-bold text-lg">{totalSgd.toFixed(2)}</td>
-                    <td></td>
+                    <td colSpan="2"></td>
                   </tr>
                 </tfoot>
               </table>
             </div>
-            <button onClick={generatePDF} disabled={isGenerating} className="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold shadow-lg shadow-blue-100">
-              {isGenerating ? "Generating..." : "Download PDF Voucher"}
+            <button onClick={generatePDF} disabled={isGenerating} className="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold shadow-lg shadow-blue-100 disabled:bg-gray-400">
+              {isGenerating ? "Processing PDF Attachments..." : "Download PDF Voucher"}
             </button>
           </div>
         )}
@@ -162,17 +169,7 @@ export default function Page() {
             </div>
           </div>
         )}
-
-        {activeTab === 'add' && (
-          <div className="bg-white p-8 rounded-2xl border text-center shadow-sm">
-            <div className="text-4xl mb-4">📸</div>
-            <h3 className="font-bold mb-2">Upload or Take Photo</h3>
-            <p className="text-sm text-gray-500 mb-6">Manual receipt entry coming soon</p>
-            <button onClick={() => setActiveTab('voucher')} className="text-blue-600 font-medium text-sm">Back to Voucher</button>
-          </div>
-        )}
       </div>
     </div>
   );
 }
-
