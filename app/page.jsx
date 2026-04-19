@@ -11,6 +11,8 @@ export default function Page() {
   
   const [rows, setRows] = useState([]);
   const [activeTab, setActiveTab] = useState('voucher');
+  const [searchResults, setSearchResults] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -36,13 +38,12 @@ export default function Page() {
           body: JSON.stringify({ image: base64Image })
         });
         const data = await res.json();
-        
         setRows(prev => [...prev, {
           date: data.date || new Date().toLocaleDateString('en-GB'),
           desc: data.desc || "Scanned Receipt",
           activity: "",
           sgd: parseFloat(data.amount) || 0,
-          image: base64Image // Store the image for the PDF
+          image: base64Image
         }]);
         setActiveTab('voucher');
       } catch (err) { alert("AI Scan failed."); }
@@ -51,12 +52,34 @@ export default function Page() {
     reader.readAsDataURL(file);
   };
 
+  async function handleSearch() {
+    setIsSearching(true);
+    try {
+      const res = await fetch(`/api/gmail/search?q=tada OR grab OR receipt`);
+      const data = await res.json();
+      setSearchResults((data.results || []).map(r => ({
+        ...r, 
+        editAmount: r.snippet?.match(/(?:SGD|S\$|Total|Charged)\s?([\d.,]+)/i)?.[1].replace(/,/g, '') || "0.00"
+      })));
+    } catch (e) {}
+    setIsSearching(false);
+  }
+
+  const addFromGmail = async (item) => {
+    setRows(prev => [...prev, {
+      date: item.date || new Date().toLocaleDateString('en-GB'),
+      desc: item.subject,
+      activity: "",
+      sgd: parseFloat(item.editAmount) || 0,
+      image: null // Gmail items don't have base64 images usually
+    }]);
+    setActiveTab('voucher');
+  };
+
   async function generatePDF() {
     setIsGenerating(true);
     try {
       const doc = new jsPDF();
-      
-      // Page 1: The Voucher
       doc.setFontSize(22);
       doc.setTextColor(0, 150, 64);
       doc.text('REDINGTON', 14, 20);
@@ -83,15 +106,11 @@ export default function Page() {
         footStyles: { fillColor: [248, 250, 252], textColor: [0, 0, 0] }
       });
 
-      // Subsequent Pages: The Attachments
       rows.forEach((row, index) => {
         if (row.image) {
           doc.addPage();
-          doc.setTextColor(100);
-          doc.setFontSize(12);
+          doc.setTextColor(100); doc.setFontSize(12);
           doc.text(`Attachment ${index + 1}: ${row.desc}`, 14, 20);
-          
-          // Add the receipt image (centered and scaled to fit A4)
           doc.addImage(row.image, 'JPEG', 15, 30, 180, 0); 
         }
       });
@@ -101,19 +120,23 @@ export default function Page() {
     setIsGenerating(false);
   }
 
-  if (status === "loading") return <div className="p-20 text-center">Loading...</div>;
-  if (!session) return <div className="p-20 text-center"><button onClick={() => signIn('google')} className="bg-[#009640] text-white px-8 py-3 rounded-xl font-bold">Sign In</button></div>;
+  if (status === "loading") return <div className="p-20 text-center text-slate-500 font-bold">Initializing Redington Portal...</div>;
+  if (!session) return <div className="min-h-screen flex items-center justify-center bg-slate-50"><button onClick={() => signIn('google')} className="bg-[#009640] text-white px-10 py-4 rounded-2xl font-black shadow-xl">Sign In to Redington</button></div>;
 
   return (
-    <div className="max-w-4xl mx-auto p-4">
+    <div className="max-w-4xl mx-auto p-4 font-sans">
       <div className="flex justify-between items-center mb-8 bg-white p-6 rounded-2xl border shadow-sm">
-        <h1 className="text-xl font-black text-[#009640]">REDINGTON</h1>
-        <button onClick={() => signOut()} className="text-[10px] text-slate-400 uppercase font-bold">Sign out</button>
+        <div className="flex flex-col">
+          <h1 className="text-2xl font-black text-[#009640] tracking-tighter">REDINGTON</h1>
+          <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Expense Portal</span>
+        </div>
+        <button onClick={() => signOut()} className="text-[10px] text-slate-300 hover:text-red-500 font-bold uppercase">Sign out</button>
       </div>
 
       <div className="flex gap-2 mb-8 bg-slate-100 p-1.5 rounded-2xl w-fit">
-        <button onClick={() => setActiveTab('voucher')} className={`px-6 py-2 rounded-xl text-sm font-bold ${activeTab === 'voucher' ? 'bg-white shadow text-blue-600' : 'text-slate-500'}`}>My Voucher</button>
-        <button onClick={() => setActiveTab('add')} className={`px-6 py-2 rounded-xl text-sm font-bold ${activeTab === 'add' ? 'bg-white shadow text-blue-600' : 'text-slate-500'}`}>+ Take Photo</button>
+        <button onClick={() => setActiveTab('voucher')} className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === 'voucher' ? 'bg-white shadow text-[#009640]' : 'text-slate-500'}`}>My Voucher</button>
+        <button onClick={() => setActiveTab('add')} className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === 'add' ? 'bg-white shadow text-[#009640]' : 'text-slate-500'}`}>+ Take Photo</button>
+        <button onClick={() => setActiveTab('search')} className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === 'search' ? 'bg-white shadow text-[#009640]' : 'text-slate-500'}`}>Search Gmail</button>
       </div>
 
       {activeTab === 'voucher' && (
@@ -121,41 +144,81 @@ export default function Page() {
           <div className="bg-white rounded-2xl border shadow-sm overflow-hidden">
             <table className="w-full text-sm">
               <thead className="bg-[#1a202c] text-white">
-                <tr><th className="p-4 text-left">Details & Activity</th><th className="p-4 text-right">SGD</th><th className="p-4"></th></tr>
+                <tr>
+                  <th className="p-4 text-left font-bold uppercase text-[10px] tracking-widest">Details & Activity</th>
+                  <th className="p-4 text-right font-bold uppercase text-[10px] tracking-widest">SGD</th>
+                  <th className="p-4"></th>
+                </tr>
               </thead>
               <tbody className="divide-y">
-                {rows.map((row, i) => (
-                  <tr key={i}>
+                {rows.length === 0 ? (
+                  <tr><td colSpan="3" className="p-16 text-center text-slate-300 italic">No items added.</td></tr>
+                ) : rows.map((row, i) => (
+                  <tr key={i} className="hover:bg-slate-50/50 transition-colors">
                     <td className="p-4">
                        <div className="font-bold text-slate-800">{row.desc}</div>
+                       <div className="text-[10px] text-slate-400 mb-2 uppercase font-bold">{row.date}</div>
                        <input 
-                         className="w-full p-2 bg-slate-50 border rounded text-xs italic" 
-                         placeholder="Activity description..."
+                         className="w-full p-2 bg-blue-50/50 border border-blue-100 rounded-lg text-xs italic text-slate-600" 
+                         placeholder="Describe activity (e.g., Client meeting at Suntec)"
                          value={row.activity || ''}
                          onChange={(e) => updateRow(i, 'activity', e.target.value)}
                        />
                     </td>
-                    <td className="p-4 text-right font-black">S$ {(row.sgd || 0).toFixed(2)}</td>
-                    <td className="p-4 text-right"><button onClick={() => setRows(rows.filter((_, idx) => idx !== i))} className="text-slate-300 hover:text-red-500">✕</button></td>
+                    <td className="p-4 text-right font-black text-slate-900">S$ {(row.sgd || 0).toFixed(2)}</td>
+                    <td className="p-4 text-right">
+                      <button onClick={() => setRows(rows.filter((_, idx) => idx !== i))} className="text-slate-200 hover:text-red-500 transition-colors">✕</button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
+              <tfoot className="bg-slate-900 text-white">
+                <tr>
+                  <td className="p-5 text-right font-bold uppercase text-[10px] tracking-widest text-slate-400">Total Claim</td>
+                  <td className="p-5 text-right font-black text-xl">S$ {totalSgd.toFixed(2)}</td>
+                  <td></td>
+                </tr>
+              </tfoot>
             </table>
           </div>
-          <button onClick={generatePDF} disabled={rows.length === 0 || isGenerating} className="w-full bg-blue-600 text-white py-5 rounded-2xl font-bold shadow-lg">
-            {isGenerating ? "Attaching Receipts & Saving..." : "Download PDF Voucher"}
+          <button onClick={generatePDF} disabled={rows.length === 0 || isGenerating} className="w-full bg-[#3182ce] hover:bg-[#2b6cb0] text-white py-5 rounded-2xl font-black text-lg shadow-xl transition-all disabled:bg-slate-200">
+            {isGenerating ? "Preparing PDF & Attachments..." : "Download PDF Voucher"}
           </button>
         </div>
       )}
 
       {activeTab === 'add' && (
-        <div className="grid grid-cols-1 gap-6">
-          <button onClick={() => cameraInputRef.current.click()} className="p-16 border-2 border-dashed rounded-3xl bg-white flex flex-col items-center">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <button onClick={() => cameraInputRef.current.click()} className="p-16 border-2 border-dashed border-slate-200 rounded-[2rem] bg-white hover:bg-slate-50 transition-all flex flex-col items-center">
             <span className="text-4xl mb-4">📸</span>
-            <span className="font-bold text-slate-700">Take Photo or Upload Receipt</span>
+            <span className="font-bold text-slate-700">Take Photo / Upload</span>
           </button>
           <input type="file" accept="image/*" ref={cameraInputRef} className="hidden" onChange={processImage} />
-          {isProcessing && <div className="col-span-full text-center p-10 font-bold text-blue-600 animate-pulse">🤖 AI Scanning...</div>}
+          {isProcessing && <div className="col-span-full text-center p-12 bg-white rounded-3xl border animate-pulse text-[#009640] font-black uppercase tracking-widest text-sm">AI Scanning Receipt...</div>}
+        </div>
+      )}
+
+      {activeTab === 'search' && (
+        <div className="space-y-4">
+          <button onClick={handleSearch} disabled={isSearching} className="w-full bg-slate-900 text-white py-4 rounded-2xl font-bold hover:bg-black transition-colors">{isSearching ? "Searching Gmail..." : "Search Transport Receipts"}</button>
+          <div className="grid gap-3">
+            {searchResults.map((res, i) => (
+              <div key={i} className="p-4 border rounded-2xl flex justify-between items-center bg-white shadow-sm hover:shadow-md">
+                <div className="w-2/3">
+                  <div className="text-[10px] text-blue-600 font-bold uppercase">{res.date}</div>
+                  <div className="text-sm font-bold text-slate-800 truncate">{res.subject}</div>
+                </div>
+                <div className="flex gap-2 items-center">
+                  <input className="border border-slate-200 w-20 p-2 text-xs font-bold rounded-xl bg-slate-50" value={res.editAmount} onChange={e => {
+                    const updated = [...searchResults];
+                    updated[i].editAmount = e.target.value;
+                    setSearchResults(updated);
+                  }} />
+                  <button onClick={() => addFromGmail(res)} className="bg-[#009640] text-white px-5 py-2 rounded-xl text-xs font-bold">Add</button>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>
