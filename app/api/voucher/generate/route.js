@@ -2,68 +2,58 @@
 import puppeteer from 'puppeteer-core';
 import chromium from '@sparticuz/chromium';
 
+export const maxDuration = 60; // Allow 60 seconds for PDF generation
+
 export async function POST(req) {
   try {
     const { items, pvNumber } = await req.json();
-    const totalSgd = items.reduce((sum, row) => sum + row.sgd, 0);
+    if (!items || items.length === 0) throw new Error("No items provided");
+
+    const totalSgd = items.reduce((sum, row) => sum + (parseFloat(row.sgd) || 0), 0);
 
     let htmlContent = `
       <html>
       <head>
         <style>
-          body { font-family: "Helvetica", Arial, sans-serif; padding: 30px; }
-          .header { display: flex; justify-content: space-between; border-bottom: 2px solid #000; padding-bottom: 10px; }
-          .title { font-size: 22px; font-weight: bold; text-align: center; margin: 20px 0; text-decoration: underline; }
-          table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 10px; }
-          th { background: #f2f2f2; border: 1px solid #000; padding: 8px; text-transform: uppercase; }
+          body { font-family: Helvetica, Arial, sans-serif; padding: 40px; font-size: 12px; }
+          .header { display: flex; justify-content: space-between; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px; }
+          table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
+          th { background: #f0f0f0; border: 1px solid #000; padding: 8px; text-align: center; }
           td { border: 1px solid #000; padding: 8px; }
-          .total-row { background: #e0e0e0; font-weight: bold; }
           .page-break { page-break-before: always; }
-          .attachment-header { background: #1a365d; color: white; padding: 10px; margin-bottom: 20px; }
+          .receipt-title { background: #1a365d; color: white; padding: 10px; margin-bottom: 15px; font-weight: bold; }
         </style>
       </head>
       <body>
         <div class="header">
-          <div><p><strong>PAY TO:</strong> Ivan Ong</p></div>
-          <div style="text-align: right;">
-            <p><strong>Voucher No:</strong> ${pvNumber || 'PV4'}</p>
-            <p><strong>Date:</strong> ${new Date().toLocaleDateString('en-GB')}</p>
-          </div>
+          <div><strong>PAY TO:</strong> Ivan Ong</div>
+          <div style="text-align:right"><strong>Voucher:</strong> ${pvNumber || 'PV4'}<br/><strong>Date:</strong> ${new Date().toLocaleDateString('en-GB')}</div>
         </div>
-        <div class="title">PAYMENT VOUCHER</div>
+        <h2 style="text-align:center">PAYMENT VOUCHER</h2>
         <table>
           <thead>
-            <tr>
-              <th>No.</th>
-              <th>Date</th>
-              <th>Description</th>
-              <th>Reference</th>
-              <th>Orig. Amount</th>
-              <th>SGD</th>
-            </tr>
+            <tr><th>No.</th><th>Date</th><th>Description</th><th>Ref</th><th>Amount</th><th>SGD</th></tr>
           </thead>
           <tbody>
             ${items.map((item, i) => `
               <tr>
-                <td style="text-align: center;">${i + 1}</td>
+                <td align="center">${i + 1}</td>
                 <td>${item.date}</td>
                 <td>${item.desc}</td>
                 <td>${item.ref || '-'}</td>
                 <td>${item.orig || '-'}</td>
-                <td style="text-align: right;">${item.sgd.toFixed(2)}</td>
+                <td align="right">${(item.sgd || 0).toFixed(2)}</td>
               </tr>
             `).join('')}
           </tbody>
-          <tfoot>
-            <tr class="total-row">
-              <td colspan="5" style="text-align: right;">TOTAL CLAIMABLE AMOUNT (SGD)</td>
-              <td style="text-align: right;">${totalSgd.toFixed(2)}</td>
-            </tr>
-          </tfoot>
+          <tr style="background:#eee; font-weight:bold;">
+            <td colspan="5" align="right">TOTAL SGD</td>
+            <td align="right">${totalSgd.toFixed(2)}</td>
+          </tr>
         </table>
         ${items.filter(item => item.receiptHtml).map((item, i) => `
           <div class="page-break"></div>
-          <div class="attachment-header">RECEIPT ATTACHMENT #${i + 1}</div>
+          <div class="receipt-title">ATTACHMENT #${i + 1} - ${item.desc}</div>
           <div>${item.receiptHtml}</div>
         `).join('')}
       </body>
@@ -83,9 +73,13 @@ export async function POST(req) {
     await browser.close();
 
     return new NextResponse(pdfBuffer, {
-      headers: { 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename=PV_Ivan_Ong.pdf` }
+      headers: { 
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': 'attachment; filename=Payment_Voucher.pdf' 
+      },
     });
   } catch (error) {
+    console.error("PDF Error:", error.message);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
