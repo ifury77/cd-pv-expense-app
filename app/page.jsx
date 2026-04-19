@@ -75,7 +75,8 @@ export default function Home() {
       }));
       setExtractMsg("✓ Receipt details extracted — please review and confirm");
     } catch(e) {
-      setExtractMsg("Could not auto-extract — please fill in manually");
+      console.error("Extract error:", e.message);
+      setExtractMsg("❌ " + (e.message || "Could not auto-extract") + " — please fill in manually");
     }
     setExtracting(false);
   }
@@ -142,9 +143,14 @@ export default function Home() {
     setSearchResults([]);
     try {
       const res = await fetch(`/api/gmail/search?q=${encodeURIComponent(searchQ)}`);
-      const data = await res.json();
+      const text = await res.text();
+      if (!text) throw new Error("Empty response from server");
+      const data = JSON.parse(text);
+      if (data.error) throw new Error(data.error);
       setSearchResults(data.results || []);
-    } catch(e) { alert("Search failed: " + e.message); }
+    } catch(e) {
+      alert("Search failed: " + e.message);
+    }
     setSearching(false);
   }
 
