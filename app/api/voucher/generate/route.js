@@ -1,12 +1,12 @@
 ﻿import { NextResponse } from 'next/server';
-const html_to_pdf = require('html-pdf-node');
+import puppeteer from 'puppeteer-core';
+import chromium from '@sparticuz/chromium';
 
 export async function POST(req) {
   try {
     const { items, pvNumber } = await req.json();
     const totalSgd = items.reduce((sum, row) => sum + row.sgd, 0);
 
-    // 1. Main Voucher Page (Template Matching)
     let htmlContent = `
       <html>
       <head>
@@ -26,17 +26,14 @@ export async function POST(req) {
       <body>
         <div class="header">
           <div>
-            <img src="https://raw.githubusercontent.com/Redington-ASEAN/assets/main/logo.png" class="logo" />
-            <p style="margin-top:10px;"><strong>PAY TO:</strong> Ivan Ong</p>
+            <p><strong>PAY TO:</strong> Ivan Ong</p>
           </div>
           <div style="text-align: right;">
             <p><strong>Voucher No:</strong> ${pvNumber || 'PV4'}</p>
             <p><strong>Date:</strong> ${new Date().toLocaleDateString('en-GB')}</p>
           </div>
         </div>
-
         <div class="title">PAYMENT VOUCHER</div>
-
         <table>
           <thead>
             <tr>
@@ -54,7 +51,7 @@ export async function POST(req) {
                 <td style="text-align: center;">${i + 1}</td>
                 <td>${item.date}</td>
                 <td>${item.desc}</td>
-                <td style="font-family: monospace;">${item.ref || '-'}</td>
+                <td>${item.ref || '-'}</td>
                 <td>${item.orig || '-'}</td>
                 <td style="text-align: right; font-weight: bold;">${item.sgd.toFixed(2)}</td>
               </tr>
@@ -67,36 +64,36 @@ export async function POST(req) {
             </tr>
           </tfoot>
         </table>
-
-        <div style="margin-top: 60px; font-size: 10px; display: flex; justify-content: space-between;">
-          <div style="border-top: 1px solid #000; width: 200px; text-align: center; padding-top: 5px;">Payment Approved By</div>
-          <div style="border-top: 1px solid #000; width: 200px; text-align: center; padding-top: 5px;">Received By</div>
-        </div>
-
         ${items.filter(item => item.receiptHtml).map((item, i) => `
           <div class="page-break"></div>
           <div class="attachment-header">RECEIPT ATTACHMENT #${i + 1} - ${item.desc}</div>
-          <div style="transform: scale(0.95); transform-origin: top left;">
-            ${item.receiptHtml}
-          </div>
+          <div style="font-size: 10px;">${item.receiptHtml}</div>
         `).join('')}
       </body>
       </html>
     `;
 
-    const file = { content: htmlContent };
-    const options = { format: 'A4', margin: { top: '10mm', bottom: '10mm', left: '10mm', right: '10mm' } };
-    
-    const pdfBuffer = await html_to_pdf.generatePdf(file, options);
+    const browser = await puppeteer.launch({
+      args: chromium.args,
+      defaultViewport: chromium.defaultViewport,
+      executablePath: await chromium.executablePath(),
+      headless: chromium.headless,
+    });
+
+    const page = await browser.newPage();
+    await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
+    const pdfBuffer = await page.pdf({ format: 'A4', printBackground: true, margin: { top: '10mm', right: '10mm', bottom: '10mm', left: '10mm' } });
+    await browser.close();
 
     return new NextResponse(pdfBuffer, {
       status: 200,
       headers: {
         'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename=PV_Ivan_Ong_${pvNumber}.pdf`,
+        'Content-Disposition': `attachment; filename=PV_Ivan_Ong.pdf`,
       },
     });
   } catch (error) {
+    console.error(error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
