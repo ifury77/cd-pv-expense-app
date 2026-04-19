@@ -2,7 +2,7 @@
 import { useState, useRef } from 'react';
 import { useSession, signIn, signOut } from 'next-auth/react';
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 
 export default function Page() {
   const { data: session, status } = useSession();
@@ -71,7 +71,7 @@ export default function Page() {
       desc: item.subject,
       activity: "",
       sgd: parseFloat(item.editAmount) || 0,
-      image: null // Gmail items don't have base64 images usually
+      image: null
     }]);
     setActiveTab('voucher');
   };
@@ -80,6 +80,8 @@ export default function Page() {
     setIsGenerating(true);
     try {
       const doc = new jsPDF();
+      
+      // BRANDING
       doc.setFontSize(22);
       doc.setTextColor(0, 150, 64);
       doc.text('REDINGTON', 14, 20);
@@ -93,7 +95,8 @@ export default function Page() {
         { content: `S$ ${row.sgd.toFixed(2)}`, styles: { halign: 'right', fontStyle: 'bold' } }
       ]);
 
-      doc.autoTable({
+      // Using the standalone autoTable function which is more reliable in Next.js
+      autoTable(doc, {
         startY: 35,
         head: [['Details & Activity Description', 'Amount']],
         body: tableRows,
@@ -106,6 +109,7 @@ export default function Page() {
         footStyles: { fillColor: [248, 250, 252], textColor: [0, 0, 0] }
       });
 
+      // ATTACHMENTS
       rows.forEach((row, index) => {
         if (row.image) {
           doc.addPage();
@@ -116,11 +120,14 @@ export default function Page() {
       });
 
       doc.save(`Voucher_Ivan_Ong.pdf`);
-    } catch (e) { alert("PDF Error: " + e.message); }
+    } catch (e) { 
+      console.error(e);
+      alert("PDF Error: " + e.message); 
+    }
     setIsGenerating(false);
   }
 
-  if (status === "loading") return <div className="p-20 text-center text-slate-500 font-bold">Initializing Redington Portal...</div>;
+  if (status === "loading") return <div className="p-20 text-center font-bold">Loading...</div>;
   if (!session) return <div className="min-h-screen flex items-center justify-center bg-slate-50"><button onClick={() => signIn('google')} className="bg-[#009640] text-white px-10 py-4 rounded-2xl font-black shadow-xl">Sign In to Redington</button></div>;
 
   return (
@@ -145,80 +152,78 @@ export default function Page() {
             <table className="w-full text-sm">
               <thead className="bg-[#1a202c] text-white">
                 <tr>
-                  <th className="p-4 text-left font-bold uppercase text-[10px] tracking-widest">Details & Activity</th>
-                  <th className="p-4 text-right font-bold uppercase text-[10px] tracking-widest">SGD</th>
+                  <th className="p-4 text-left font-bold uppercase text-[10px]">Details & Activity</th>
+                  <th className="p-4 text-right font-bold uppercase text-[10px]">SGD</th>
                   <th className="p-4"></th>
                 </tr>
               </thead>
               <tbody className="divide-y">
                 {rows.length === 0 ? (
-                  <tr><td colSpan="3" className="p-16 text-center text-slate-300 italic">No items added.</td></tr>
+                  <tr><td colSpan="3" className="p-16 text-center text-slate-300 italic">No items.</td></tr>
                 ) : rows.map((row, i) => (
-                  <tr key={i} className="hover:bg-slate-50/50 transition-colors">
+                  <tr key={i}>
                     <td className="p-4">
                        <div className="font-bold text-slate-800">{row.desc}</div>
                        <div className="text-[10px] text-slate-400 mb-2 uppercase font-bold">{row.date}</div>
                        <input 
-                         className="w-full p-2 bg-blue-50/50 border border-blue-100 rounded-lg text-xs italic text-slate-600" 
-                         placeholder="Describe activity (e.g., Client meeting at Suntec)"
+                         className="w-full p-2 bg-blue-50/50 border border-blue-100 rounded-lg text-xs italic" 
+                         placeholder="Describe activity..."
                          value={row.activity || ''}
                          onChange={(e) => updateRow(i, 'activity', e.target.value)}
                        />
                     </td>
-                    <td className="p-4 text-right font-black text-slate-900">S$ {(row.sgd || 0).toFixed(2)}</td>
+                    <td className="p-4 text-right font-black">S$ {(row.sgd || 0).toFixed(2)}</td>
                     <td className="p-4 text-right">
                       <button onClick={() => setRows(rows.filter((_, idx) => idx !== i))} className="text-slate-200 hover:text-red-500 transition-colors">✕</button>
                     </td>
                   </tr>
                 ))}
               </tbody>
-              <tfoot className="bg-slate-900 text-white">
+              <tfoot className="bg-slate-900 text-white font-bold">
                 <tr>
-                  <td className="p-5 text-right font-bold uppercase text-[10px] tracking-widest text-slate-400">Total Claim</td>
-                  <td className="p-5 text-right font-black text-xl">S$ {totalSgd.toFixed(2)}</td>
+                  <td className="p-5 text-right uppercase text-[10px]">Total Claim</td>
+                  <td className="p-5 text-right text-xl">S$ {totalSgd.toFixed(2)}</td>
                   <td></td>
                 </tr>
               </tfoot>
             </table>
           </div>
-          <button onClick={generatePDF} disabled={rows.length === 0 || isGenerating} className="w-full bg-[#3182ce] hover:bg-[#2b6cb0] text-white py-5 rounded-2xl font-black text-lg shadow-xl transition-all disabled:bg-slate-200">
-            {isGenerating ? "Preparing PDF & Attachments..." : "Download PDF Voucher"}
+          <button onClick={generatePDF} disabled={rows.length === 0 || isGenerating} className="w-full bg-[#3182ce] hover:bg-[#2b6cb0] text-white py-5 rounded-2xl font-black text-lg shadow-xl">
+            {isGenerating ? "Processing..." : "Download PDF Voucher"}
           </button>
         </div>
       )}
 
       {activeTab === 'add' && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <button onClick={() => cameraInputRef.current.click()} className="p-16 border-2 border-dashed border-slate-200 rounded-[2rem] bg-white hover:bg-slate-50 transition-all flex flex-col items-center">
+          <button onClick={() => cameraInputRef.current.click()} className="p-16 border-2 border-dashed border-slate-200 rounded-[2rem] bg-white flex flex-col items-center">
             <span className="text-4xl mb-4">📸</span>
             <span className="font-bold text-slate-700">Take Photo / Upload</span>
           </button>
           <input type="file" accept="image/*" ref={cameraInputRef} className="hidden" onChange={processImage} />
-          {isProcessing && <div className="col-span-full text-center p-12 bg-white rounded-3xl border animate-pulse text-[#009640] font-black uppercase tracking-widest text-sm">AI Scanning Receipt...</div>}
+          {isProcessing && <div className="col-span-full text-center p-12 animate-pulse text-[#009640] font-black uppercase tracking-widest text-sm">AI Scanning...</div>}
         </div>
       )}
 
       {activeTab === 'search' && (
         <div className="space-y-4">
-          <button onClick={handleSearch} disabled={isSearching} className="w-full bg-slate-900 text-white py-4 rounded-2xl font-bold hover:bg-black transition-colors">{isSearching ? "Searching Gmail..." : "Search Transport Receipts"}</button>
-          <div className="grid gap-3">
-            {searchResults.map((res, i) => (
-              <div key={i} className="p-4 border rounded-2xl flex justify-between items-center bg-white shadow-sm hover:shadow-md">
-                <div className="w-2/3">
-                  <div className="text-[10px] text-blue-600 font-bold uppercase">{res.date}</div>
-                  <div className="text-sm font-bold text-slate-800 truncate">{res.subject}</div>
-                </div>
-                <div className="flex gap-2 items-center">
-                  <input className="border border-slate-200 w-20 p-2 text-xs font-bold rounded-xl bg-slate-50" value={res.editAmount} onChange={e => {
-                    const updated = [...searchResults];
-                    updated[i].editAmount = e.target.value;
-                    setSearchResults(updated);
-                  }} />
-                  <button onClick={() => addFromGmail(res)} className="bg-[#009640] text-white px-5 py-2 rounded-xl text-xs font-bold">Add</button>
-                </div>
+          <button onClick={handleSearch} disabled={isSearching} className="w-full bg-slate-900 text-white py-4 rounded-2xl font-bold">Search Gmail</button>
+          {searchResults.map((res, i) => (
+            <div key={i} className="p-4 border rounded-2xl flex justify-between items-center bg-white">
+              <div className="w-2/3">
+                <div className="text-[10px] text-blue-600 font-bold uppercase">{res.date}</div>
+                <div className="text-sm font-bold truncate">{res.subject}</div>
               </div>
-            ))}
-          </div>
+              <div className="flex gap-2 items-center">
+                <input className="border w-20 p-2 text-xs font-bold rounded-xl" value={res.editAmount} onChange={e => {
+                  const updated = [...searchResults];
+                  updated[i].editAmount = e.target.value;
+                  setSearchResults(updated);
+                }} />
+                <button onClick={() => addFromGmail(res)} className="bg-[#009640] text-white px-5 py-2 rounded-xl text-xs font-bold">Add</button>
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>
