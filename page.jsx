@@ -85,10 +85,20 @@ export default function Home() {
     setSearchResults([]);
     try {
       const res = await fetch(`/api/gmail/search?q=${encodeURIComponent(searchQ)}`);
-      const data = await res.json(); // + try/catch OR res.ok check
-      setSearchResults(data.results || []);
-    } catch(e) { alert("Search failed: " + e.message); }
-    setSearching(false);
+
+if (!res.ok) {
+  const text = await res.text();
+  throw new Error(text || "Gmail API failed");
+}
+
+let data;
+try {
+  data = await res.json();
+} catch (e) {
+  throw new Error("Server did not return valid JSON");
+}
+
+setSearchResults(data.results || []);
   }
 
   function addFromSearch(r) {
