@@ -11,23 +11,20 @@ export async function POST(req) {
       <html>
       <head>
         <style>
-          body { font-family: "Helvetica", Arial, sans-serif; padding: 30px; color: #333; }
+          body { font-family: "Helvetica", Arial, sans-serif; padding: 30px; }
           .header { display: flex; justify-content: space-between; border-bottom: 2px solid #000; padding-bottom: 10px; }
-          .logo { height: 35px; }
           .title { font-size: 22px; font-weight: bold; text-align: center; margin: 20px 0; text-decoration: underline; }
           table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 10px; }
-          th { background: #f2f2f2; border: 1px solid #000; padding: 8px; text-align: center; text-transform: uppercase; }
-          td { border: 1px solid #000; padding: 8px; vertical-align: middle; }
+          th { background: #f2f2f2; border: 1px solid #000; padding: 8px; text-transform: uppercase; }
+          td { border: 1px solid #000; padding: 8px; }
           .total-row { background: #e0e0e0; font-weight: bold; }
           .page-break { page-break-before: always; }
-          .attachment-header { background: #1a365d; color: white; padding: 10px; font-size: 12px; margin-bottom: 20px; }
+          .attachment-header { background: #1a365d; color: white; padding: 10px; margin-bottom: 20px; }
         </style>
       </head>
       <body>
         <div class="header">
-          <div>
-            <p><strong>PAY TO:</strong> Ivan Ong</p>
-          </div>
+          <div><p><strong>PAY TO:</strong> Ivan Ong</p></div>
           <div style="text-align: right;">
             <p><strong>Voucher No:</strong> ${pvNumber || 'PV4'}</p>
             <p><strong>Date:</strong> ${new Date().toLocaleDateString('en-GB')}</p>
@@ -37,12 +34,12 @@ export async function POST(req) {
         <table>
           <thead>
             <tr>
-              <th style="width: 5%;">No.</th>
-              <th style="width: 15%;">Date</th>
-              <th style="width: 35%;">Description</th>
-              <th style="width: 20%;">Reference / Booking ID</th>
-              <th style="width: 15%;">Orig. Amount</th>
-              <th style="width: 10%;">SGD</th>
+              <th>No.</th>
+              <th>Date</th>
+              <th>Description</th>
+              <th>Reference</th>
+              <th>Orig. Amount</th>
+              <th>SGD</th>
             </tr>
           </thead>
           <tbody>
@@ -53,7 +50,7 @@ export async function POST(req) {
                 <td>${item.desc}</td>
                 <td>${item.ref || '-'}</td>
                 <td>${item.orig || '-'}</td>
-                <td style="text-align: right; font-weight: bold;">${item.sgd.toFixed(2)}</td>
+                <td style="text-align: right;">${item.sgd.toFixed(2)}</td>
               </tr>
             `).join('')}
           </tbody>
@@ -66,8 +63,8 @@ export async function POST(req) {
         </table>
         ${items.filter(item => item.receiptHtml).map((item, i) => `
           <div class="page-break"></div>
-          <div class="attachment-header">RECEIPT ATTACHMENT #${i + 1} - ${item.desc}</div>
-          <div style="font-size: 10px;">${item.receiptHtml}</div>
+          <div class="attachment-header">RECEIPT ATTACHMENT #${i + 1}</div>
+          <div>${item.receiptHtml}</div>
         `).join('')}
       </body>
       </html>
@@ -82,18 +79,13 @@ export async function POST(req) {
 
     const page = await browser.newPage();
     await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
-    const pdfBuffer = await page.pdf({ format: 'A4', printBackground: true, margin: { top: '10mm', right: '10mm', bottom: '10mm', left: '10mm' } });
+    const pdfBuffer = await page.pdf({ format: 'A4', printBackground: true });
     await browser.close();
 
     return new NextResponse(pdfBuffer, {
-      status: 200,
-      headers: {
-        'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename=PV_Ivan_Ong.pdf`,
-      },
+      headers: { 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename=PV_Ivan_Ong.pdf` }
     });
   } catch (error) {
-    console.error(error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
