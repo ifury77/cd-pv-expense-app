@@ -3,10 +3,12 @@ import { useState, useRef } from 'react';
 import { useSession, signIn, signOut } from 'next-auth/react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import html2canvas from 'html2canvas';
 
 export default function Page() {
   const { data: session } = useSession();
   const cameraInputRef = useRef(null);
+  const emailRenderRef = useRef(null);
   const [rows, setRows] = useState([]);
   const [activeTab, setActiveTab] = useState('voucher');
   const [searchResults, setSearchResults] = useState([]);
@@ -41,7 +43,8 @@ export default function Page() {
           desc: data.desc || "Scanned Receipt",
           ref: "",
           sgd: parseFloat(data.amount) || 0,
-          image: base64Image
+          image: base64Image,
+          html: null
         }]);
         setActiveTab('voucher');
       } catch (err) { alert("AI Scan failed."); }
@@ -63,13 +66,21 @@ export default function Page() {
     setIsSearching(false);
   }
 
-  const addFromGmail = (item) => {
+  const addFromGmail = async (item) => {
+    let emailHtml = "";
+    try {
+      const res = await fetch(`/api/gmail/message?id=${item.id}`);
+      const data = await res.json();
+      emailHtml = data.html;
+    } catch (e) {}
+    
     setRows(prev => [...prev, {
       date: item.date || new Date().toLocaleDateString('en-GB'),
       desc: item.subject,
       ref: item.snippet?.match(/[A-Z0-9]{8,}/)?.[0] || "",
       sgd: parseFloat(item.editAmount) || 0,
-      image: null
+      image: null,
+      html: emailHtml
     }]);
     setActiveTab('voucher');
   };
@@ -85,39 +96,49 @@ export default function Page() {
       doc.text(`PAY TO: Ivan Ong`, 14, 36);
       doc.text(`DATE: ${new Date().toLocaleDateString('en-GB')}`, 250, 30);
 
-      const tableRows = rows.map((row, i) => [
-        i + 1, row.date, row.desc, row.ref, `S$ ${row.sgd.toFixed(2)}`
-      ]);
-
       autoTable(doc, {
         startY: 45,
         head: [['No.', 'Date', 'Description', 'Reference', 'Amount (SGD)']],
-        body: tableRows,
+        body: rows.map((row, i) => [i + 1, row.date, row.desc, row.ref, `S$ ${row.sgd.toFixed(2)}`]),
         theme: 'grid',
         headStyles: { fillColor: [240, 240, 240], textColor: 0, fontStyle: 'bold' },
         foot: [[{ content: 'TOTAL CLAIM', colSpan: 4, styles: { halign: 'right', fontStyle: 'bold' } }, { content: `S$ ${totalSgd.toFixed(2)}`, styles: { fontStyle: 'bold' } }]]
       });
 
-      rows.forEach((row, index) => {
+      // ATTACHMENTS LOOP
+      for (const [index, row] of rows.entries()) {
+        doc.addPage('a4', 'portrait');
+        doc.setFontSize(12); doc.setTextColor(100);
+        doc.text(`Attachment ${index + 1}: ${row.desc}`, 15, 20);
+
         if (row.image) {
-          doc.addPage('a4', 'portrait');
-          doc.setFontSize(12); doc.setTextColor(100);
-          doc.text(`Attachment ${index + 1}: ${row.desc}`, 15, 20);
-          doc.addImage(row.image, 'JPEG', 15, 30, 180, 0); 
+          doc.addImage(row.image, 'JPEG', 15, 30, 180, 0);
+        } else if (row.html) {
+          // Convert HTML to Image for PDF stability
+          const container = document.createElement('div');
+          container.style.width = '800px';
+          container.style.position = 'absolute';
+          container.style.left = '-9999px';
+          container.innerHTML = row.html;
+          document.body.appendChild(container);
+          const canvas = await html2canvas(container, { useCORS: true, scale: 1 });
+          const imgData = canvas.toDataURL('image/jpeg', 0.8);
+          doc.addImage(imgData, 'JPEG', 15, 30, 180, 0);
+          document.body.removeChild(container);
         }
-      });
+      }
 
       doc.save(`Voucher_Ivan_Ong.pdf`);
     } catch (e) { alert("PDF Error: " + e.message); }
     setIsGenerating(false);
   }
 
-  if (!session) return <div className="flex h-screen items-center justify-center p-6 bg-white"><button onClick={() => signIn('google')} className="w-full max-w-sm bg-[#009640] text-white py-4 rounded-2xl font-bold shadow-lg">Sign In with Google</button></div>;
+  if (!session) return <div className="flex h-screen items-center justify-center p-6 bg-white"><button onClick={() => signIn('google')} className="w-full max-w-sm bg-[#009640] text-white py-4 rounded-2xl font-bold">Sign In</button></div>;
 
   return (
     <div className="max-w-full md:max-w-4xl mx-auto p-4 md:p-6 font-sans bg-slate-50 min-h-screen">
       <div className="flex flex-col mb-6 pt-2">
-        <h1 className="text-[#009640] font-black text-xl tracking-tight leading-none">REDINGTON</h1>
+        <h1 className="text-[#009640] font-black text-xl leading-none">REDINGTON</h1>
         <p className="text-slate-400 font-bold text-[10px] uppercase tracking-widest mt-1">Payment Voucher</p>
       </div>
 
@@ -125,59 +146,58 @@ export default function Page() {
         <button onClick={() => setActiveTab('voucher')} className={`flex-1 py-3 rounded-lg text-[11px] font-bold transition-all ${activeTab === 'voucher' ? 'bg-white shadow text-[#009640]' : 'text-slate-500'}`}>Voucher</button>
         <button onClick={() => setActiveTab('add')} className={`flex-1 py-3 rounded-lg text-[11px] font-bold transition-all ${activeTab === 'add' ? 'bg-white shadow text-[#009640]' : 'text-slate-500'}`}>+ Upload</button>
         <button onClick={() => setActiveTab('search')} className={`flex-1 py-3 rounded-lg text-[11px] font-bold transition-all ${activeTab === 'search' ? 'bg-white shadow text-[#009640]' : 'text-slate-500'}`}>Gmail</button>
-        <button onClick={() => signOut()} className="px-3 py-3 text-slate-400 text-[10px] font-bold uppercase">Exit</button>
       </div>
 
       {activeTab === 'voucher' && (
-        <div className="space-y-4">
-          <div className="space-y-3">
-            {rows.map((row, i) => (
-              <div key={i} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm relative">
-                <button onClick={() => setRows(rows.filter((_, idx) => idx !== i))} className="absolute top-4 right-4 text-slate-300">✕</button>
-                <div className="text-[10px] text-slate-400 font-bold uppercase mb-1">{row.date}</div>
-                <input className="w-full border-none p-0 font-bold text-slate-800 text-sm mb-2 focus:ring-0" value={row.desc} onChange={e => updateRow(i, 'desc', e.target.value)} />
-                <div className="flex justify-between items-end mt-4">
-                   <div className="text-[10px] text-green-600 font-bold italic">{row.image ? "✓ Attached" : ""}</div>
-                   <div className="flex items-center bg-green-50 px-3 py-1 rounded-lg">
-                      <span className="text-[10px] font-bold text-green-700 mr-2">SGD</span>
-                      <input className="w-16 bg-transparent border-none p-0 text-right font-black text-slate-900 focus:ring-0" type="number" step="0.01" value={row.sgd} onChange={e => updateRow(i, 'sgd', e.target.value)} />
-                   </div>
+        <div className="space-y-4 pb-32">
+          {rows.map((row, i) => (
+            <div key={i} className="bg-white p-4 rounded-2xl border shadow-sm relative">
+              <button onClick={() => setRows(rows.filter((_, idx) => idx !== i))} className="absolute top-4 right-4 text-slate-300">✕</button>
+              <div className="text-[10px] text-slate-400 font-bold uppercase mb-1">{row.date}</div>
+              <input className="w-full border-none p-0 font-bold text-slate-800 text-sm focus:ring-0" value={row.desc} onChange={e => updateRow(i, 'desc', e.target.value)} />
+              
+              {row.html && (
+                <button onClick={() => { const w = window.open(); w.document.write(row.html); }} className="text-blue-500 text-[10px] font-bold uppercase mt-2 block">View Email Source</button>
+              )}
+
+              <div className="flex justify-between items-end mt-4">
+                <span className="text-[9px] font-bold text-green-600 uppercase italic">{(row.image || row.html) ? "✓ Attachment Linked" : "No Attachment"}</span>
+                <div className="flex items-center bg-green-50 px-3 py-1 rounded-lg">
+                  <span className="text-[10px] font-bold text-green-700 mr-2">SGD</span>
+                  <input className="w-16 bg-transparent border-none p-0 text-right font-black text-slate-900 focus:ring-0" type="number" step="0.01" value={row.sgd} onChange={e => updateRow(i, 'sgd', e.target.value)} />
                 </div>
               </div>
-            ))}
-            {rows.length === 0 && <div className="text-center py-10 text-slate-400 text-sm italic">No entries yet.</div>}
-          </div>
-          <button onClick={generatePDF} className="fixed bottom-6 left-4 right-4 bg-[#009640] text-white py-4 rounded-2xl font-black text-lg shadow-xl shadow-green-200 z-10">
-            {isGenerating ? "Processing..." : "Download PDF"}
+            </div>
+          ))}
+          <button onClick={generatePDF} className="fixed bottom-6 left-4 right-4 bg-[#009640] text-white py-4 rounded-2xl font-black text-lg shadow-xl z-10">
+            {isGenerating ? "Capturing Attachments..." : "Download PDF"}
           </button>
-          <div className="h-24"></div>
         </div>
       )}
 
       {activeTab === 'add' && (
         <div className="flex flex-col gap-4">
-          <button onClick={() => cameraInputRef.current.click()} className="aspect-square w-full border-4 border-dashed border-slate-200 rounded-[2.5rem] bg-white flex flex-col items-center justify-center active:bg-slate-50 transition-colors">
+          <button onClick={() => cameraInputRef.current.click()} className="aspect-square w-full border-4 border-dashed border-slate-200 rounded-[2.5rem] bg-white flex flex-col items-center justify-center">
             <span className="text-5xl mb-4">📸</span>
-            <span className="font-bold text-slate-700 uppercase tracking-wider text-sm text-center px-6">Upload Snipped Receipt or Photo</span>
+            <span className="font-bold text-slate-700 uppercase tracking-wider text-sm">Upload Photo / Snip</span>
           </button>
           <input type="file" accept="image/*" ref={cameraInputRef} className="hidden" onChange={processImage} />
-          {isProcessing && <div className="text-center py-4 animate-pulse text-[#009640] font-bold text-xs uppercase tracking-widest">AI Scanning...</div>}
         </div>
       )}
 
       {activeTab === 'search' && (
         <div className="space-y-4">
-          <button onClick={handleSearch} disabled={isSearching} className="w-full bg-slate-900 text-white py-4 rounded-2xl font-bold mb-4 active:scale-[0.98] transition-all">
-            {isSearching ? "Searching..." : "🔍 Search Gmail Receipts"}
+          <button onClick={handleSearch} disabled={isSearching} className="w-full bg-slate-900 text-white py-4 rounded-2xl font-bold">
+            {isSearching ? "Searching..." : "🔍 Search Gmail"}
           </button>
           {searchResults.map((res, i) => (
-            <div key={i} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm mb-3">
-              <div className="text-[9px] text-blue-500 font-bold uppercase mb-1">{res.date}</div>
-              <div className="text-sm font-bold text-slate-800 line-clamp-1">{res.subject}</div>
-              <div className="flex justify-between items-center mt-3 pt-3 border-t border-slate-50">
-                <div className="flex items-center bg-slate-50 px-3 py-1 rounded-lg">
+            <div key={i} className="bg-white p-4 rounded-2xl border mb-3">
+              <div className="text-[9px] text-blue-500 font-bold mb-1">{res.date}</div>
+              <div className="text-sm font-bold text-slate-800 mb-3">{res.subject}</div>
+              <div className="flex justify-between items-center pt-3 border-t">
+                <div className="bg-slate-50 px-3 py-1 rounded-lg">
                   <span className="text-[10px] font-bold text-slate-400 mr-2">S$</span>
-                  <input className="w-16 bg-transparent border-none p-0 font-bold text-slate-900 text-sm focus:ring-0" value={res.editAmount} onChange={e => {
+                  <input className="w-16 bg-transparent border-none p-0 font-bold text-slate-900 text-sm" value={res.editAmount} onChange={e => {
                     const updated = [...searchResults];
                     updated[i].editAmount = e.target.value;
                     setSearchResults(updated);
