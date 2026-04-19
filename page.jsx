@@ -80,26 +80,33 @@ export default function Home() {
     setAddReceiptForm({ date:"", desc:"", ref:"", sgd:"", image:null, imagePreview:null });
   }
 
-  async function searchGmail() {
-    setSearching(true);
-    setSearchResults([]);
+async function searchGmail() {
+  setSearching(true);
+  setSearchResults([]);
+
+  try {
+    const res = await fetch(`/api/gmail/search?q=${encodeURIComponent(searchQ)}`);
+
+    const text = await res.text(); // 👈 ALWAYS read raw first
+
+    if (!res.ok) {
+      throw new Error(text || "Gmail API failed");
+    }
+
+    let data;
     try {
-      const res = await fetch(`/api/gmail/search?q=${encodeURIComponent(searchQ)}`);
+      data = JSON.parse(text);
+    } catch (e) {
+      throw new Error("Backend did not return valid JSON:\n" + text);
+    }
 
-if (!res.ok) {
-  const text = await res.text();
-  throw new Error(text || "Gmail API failed");
-}
-
-let data;
-try {
-  data = await res.json();
-} catch (e) {
-  throw new Error("Server did not return valid JSON");
-}
-
-setSearchResults(data.results || []);
+    setSearchResults(data.results || []);
+  } catch (e) {
+    alert("Search failed: " + e.message);
   }
+
+  setSearching(false);
+}
 
   function addFromSearch(r) {
     const amtNum = r.amount ? parseFloat(r.amount.replace(/[^0-9.]/g,"")) : 0;
