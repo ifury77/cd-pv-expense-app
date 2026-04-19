@@ -11,8 +11,6 @@ export default function Page() {
   const cameraInputRef = useRef(null);
   const [rows, setRows] = useState([]);
   const [activeTab, setActiveTab] = useState('voucher');
-  const [searchResults, setSearchResults] = useState([]);
-  const [isSearching, setIsSearching] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -43,8 +41,7 @@ export default function Page() {
           desc: data.desc || "Scanned Receipt",
           ref: "",
           sgd: parseFloat(data.amount) || 0,
-          image: base64Image,
-          isEmail: false
+          image: base64Image
         }]);
         setActiveTab('voucher');
       } catch (err) { alert("AI Scan failed."); }
@@ -53,44 +50,15 @@ export default function Page() {
     reader.readAsDataURL(file);
   };
 
-  async function handleSearch() {
-    setIsSearching(true);
-    try {
-      const res = await fetch(`/api/gmail/search?q=tada OR grab OR receipt`);
-      const data = await res.json();
-      setSearchResults((data.results || []).map(r => {
-        const amtMatch = r.snippet?.match(/(?:SGD|S\$|Total|Charged|Fee)\s?S?\$?\s?([\d.,]+)/i);
-        return { ...r, editAmount: amtMatch ? amtMatch[1].replace(/,/g, '') : "0.00" };
-      }));
-    } catch (e) {}
-    setIsSearching(false);
-  }
-
-  const addFromGmail = async (item) => {
-    let emailHtml = "";
-    try {
-      const res = await fetch(`/api/gmail/message?id=${item.id}`);
-      const data = await res.json();
-      emailHtml = data.html;
-    } catch (e) {}
-    setRows(prev => [...prev, {
-      date: item.date || new Date().toLocaleDateString('en-GB'),
-      desc: item.subject,
-      ref: item.snippet?.match(/[A-Z0-9]{8,}/)?.[0] || "",
-      sgd: parseFloat(item.editAmount) || 0,
-      receiptHtml: emailHtml,
-      image: null,
-      isEmail: true
-    }]);
-    setActiveTab('voucher');
-  };
-
   async function generatePDF() {
     setIsGenerating(true);
     try {
       const doc = new jsPDF('landscape');
+      
+      // BRANDING
       doc.setFontSize(18); doc.setTextColor(0, 150, 64);
       doc.text('REDINGTON', 14, 18);
+      
       doc.setFontSize(10); doc.setTextColor(0);
       doc.text('PAYMENT VOUCHER', 14, 30);
       doc.text(`PAY TO: Ivan Ong`, 14, 36);
@@ -109,30 +77,15 @@ export default function Page() {
         foot: [[{ content: 'TOTAL CLAIM', colSpan: 4, styles: { halign: 'right', fontStyle: 'bold' } }, { content: `S$ ${totalSgd.toFixed(2)}`, styles: { fontStyle: 'bold' } }]]
       });
 
-      // LOOP THROUGH ROWS FOR ATTACHMENTS
-      for (const [index, row] of rows.entries()) {
+      // INSTANT IMAGE ATTACHMENTS
+      rows.forEach((row, index) => {
         if (row.image) {
-          // It is a photo
           doc.addPage('a4', 'portrait');
           doc.setFontSize(12); doc.setTextColor(100);
           doc.text(`Attachment ${index + 1}: ${row.desc}`, 15, 20);
-          doc.addImage(row.image, 'JPEG', 15, 30, 180, 0);
-        } else if (row.isEmail && row.receiptHtml) {
-          // It is a Gmail receipt
-          doc.addPage('a4', 'portrait');
-          doc.setFontSize(12); doc.setTextColor(100);
-          doc.text(`Attachment ${index + 1} (Email): ${row.desc}`, 15, 20);
-          
-          // Use jsPDF's built-in html worker to render the email content
-          await doc.html(row.receiptHtml, {
-            callback: function(d) { /* handled by loop */ },
-            x: 15,
-            y: 30,
-            width: 180,
-            windowWidth: 800 // Scale email to fit
-          });
+          doc.addImage(row.image, 'JPEG', 15, 30, 180, 0); 
         }
-      }
+      });
 
       doc.save(`Voucher_Ivan_Ong.pdf`);
     } catch (e) { alert("PDF Error: " + e.message); }
@@ -150,8 +103,7 @@ export default function Page() {
 
       <div className="flex gap-2 mb-8 bg-slate-100 p-1.5 rounded-2xl w-fit">
         <button onClick={() => setActiveTab('voucher')} className={`px-8 py-3 rounded-xl text-sm font-bold transition-all ${activeTab === 'voucher' ? 'bg-white shadow text-[#009640]' : 'text-slate-500'}`}>My Voucher</button>
-        <button onClick={() => setActiveTab('add')} className={`px-8 py-3 rounded-xl text-sm font-bold transition-all ${activeTab === 'add' ? 'bg-white shadow text-[#009640]' : 'text-slate-500'}`}>+ Take Photo</button>
-        <button onClick={() => setActiveTab('search')} className={`px-8 py-3 rounded-xl text-sm font-bold transition-all ${activeTab === 'search' ? 'bg-white shadow text-[#009640]' : 'text-slate-500'}`}>Search Gmail</button>
+        <button onClick={() => setActiveTab('add')} className={`px-8 py-3 rounded-xl text-sm font-bold transition-all ${activeTab === 'add' ? 'bg-white shadow text-[#009640]' : 'text-slate-500'}`}>+ Upload Snipped Receipt</button>
       </div>
 
       {activeTab === 'voucher' && (
@@ -172,7 +124,7 @@ export default function Page() {
                   <td className="py-4"><input className="w-20 border-none bg-transparent" value={row.date} onChange={e => updateRow(i, 'date', e.target.value)} /></td>
                   <td className="py-4">
                     <input className="w-full border-none bg-transparent font-bold text-slate-800" value={row.desc} onChange={e => updateRow(i, 'desc', e.target.value)} />
-                    {row.receiptHtml && <button onClick={() => { const w = window.open(); w.document.write(row.receiptHtml); }} className="text-blue-500 text-[10px] block mt-1 underline uppercase font-bold">View Source Email</button>}
+                    {row.image && <span className="text-green-500 text-[9px] font-bold block mt-1 uppercase italic">Screenshot Attached</span>}
                   </td>
                   <td className="py-4"><input className="w-full border-none bg-transparent text-slate-500" value={row.ref} placeholder="Ref#" onChange={e => updateRow(i, 'ref', e.target.value)} /></td>
                   <td className="py-4 text-right">
@@ -184,42 +136,19 @@ export default function Page() {
             </tbody>
           </table>
           <button onClick={generatePDF} className="mt-10 w-full bg-[#009640] text-white py-5 rounded-2xl font-black text-lg shadow-xl shadow-green-100">
-            {isGenerating ? "Rendering Email Attachments..." : "Download PDF Voucher"}
+            {isGenerating ? "Creating PDF..." : "Download PDF Voucher"}
           </button>
         </div>
       )}
 
       {activeTab === 'add' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 gap-8">
           <button onClick={() => cameraInputRef.current.click()} className="p-20 border-4 border-dashed border-slate-100 rounded-[3rem] bg-white hover:bg-slate-50 flex flex-col items-center justify-center transition-all group">
-            <span className="text-5xl mb-4 group-hover:scale-110 transition-transform">📸</span>
-            <span className="font-bold text-slate-700 uppercase tracking-wider">Scan Receipt</span>
+            <span className="text-5xl mb-4 group-hover:scale-110 transition-transform">🖼️</span>
+            <span className="font-bold text-slate-700 uppercase tracking-wider">Upload Screenshot / Snipping Tool Image</span>
           </button>
           <input type="file" accept="image/*" ref={cameraInputRef} className="hidden" onChange={processImage} />
           {isProcessing && <div className="p-20 text-center animate-pulse text-[#009640] font-black uppercase tracking-widest">AI Analyzing...</div>}
-        </div>
-      )}
-
-      {activeTab === 'search' && (
-        <div className="space-y-4">
-          <button onClick={handleSearch} className="w-full bg-slate-900 text-white py-4 rounded-2xl font-bold">{isSearching ? "Searching Gmail..." : "Search Transport Receipts"}</button>
-          {searchResults.map((res, i) => (
-            <div key={i} className="p-5 border rounded-2xl flex justify-between items-center bg-white shadow-sm">
-              <div className="w-2/3">
-                <div className="text-[10px] text-blue-500 font-bold mb-1 uppercase tracking-tighter">{res.date}</div>
-                <div className="text-sm font-bold truncate">{res.subject}</div>
-                <div className="text-[10px] text-slate-400 italic truncate mt-1">{res.snippet}</div>
-              </div>
-              <div className="flex items-center gap-3">
-                <input className="w-20 p-2 border rounded-lg text-right font-bold bg-slate-50" value={res.editAmount} onChange={e => {
-                  const updated = [...searchResults];
-                  updated[i].editAmount = e.target.value;
-                  setSearchResults(updated);
-                }} />
-                <button onClick={() => addFromGmail(res)} className="bg-[#009640] text-white px-5 py-2 rounded-xl text-xs font-bold">Add</button>
-              </div>
-            </div>
-          ))}
         </div>
       )}
     </div>
