@@ -4,8 +4,6 @@ import { useSession, signIn, signOut } from 'next-auth/react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
-const LOGO_SVG = `<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" viewBox="0 0 170.1 36.9" style="enable-background:new 0 0 170.1 36.9;" xml:space="preserve"><style type="text/css">.st0{fill:#ED1C24;}.st1{fill:#009640;}.st2{fill:#F15A29;}</style><g><path class="st0" d="M33,18.5l-9.8,9.8V18.5c0-1.8,1.4-3.2,3.2-3.2h9.8C34.4,15.2,33,16.7,33,18.5"/><path class="st1" d="M13,28.3l9.8-9.8v9.8c0,1.8-1.4,3.2-3.2,3.2h-9.8C11.6,31.6,13,30.1,13,28.3"/><path class="st1" d="M33,3.3l-9.8,9.8V3.3c0-1.8,1.4-3.2,3.2-3.2h9.8C34.4,0,33,1.4,33,3.3"/><path class="st0" d="M13,13.2l9.8-9.8v9.8c0,1.8-1.4,3.2-3.2,3.2h-9.8C11.6,16.4,13,15,13,13.2"/><path class="st2" d="M3.2,28.3C1.4,28.3,0,26.9,0,25.1v-9.8l9.8,9.8v3.2H3.2z"/><path class="st2" d="M3.2,3.3C1.4,3.3,0,4.7,0,6.5v9.8l9.8-9.8V3.3H3.2z"/></g><g><path class="st1" d="M43.3,31.4V11.8h4.7v2.3c1.1-1.7,2.8-2.6,5-2.6c1.2,0,2.1,0.2,2.8,0.7s1.2,1,1.5,1.7s0.4,1.6,0.4,2.8v14.7h-4.7V18.2c0-1.2-0.2-2.1-0.7-2.7c-0.5-0.6-1.1-0.9-2-0.9s-1.5,0.3-2,0.8s-0.7,1.4-0.7,2.5v13.5H43.3z"/><path class="st1" d="M68.5,31.6c-2,0-3.6-0.5-4.8-1.4s-2.1-2.2-2.5-3.8l4.1-1.6c0.6,1.9,1.7,2.9,3.3,2.9c0.7,0,1.2-0.2,1.6-0.5s0.6-0.8,0.6-1.3c0-0.4-0.1-0.7-0.4-1c-0.3-0.3-0.7-0.5-1.3-0.7s-1.5-0.5-2.6-0.8s-2.1-0.6-2.9-1c-0.8-0.4-1.4-0.9-1.9-1.6s-0.6-1.5-0.6-2.6c0-1.5,0.5-2.8,1.6-3.8s2.5-1.5,4.3-1.5c1.6,0,2.9,0.4,3.9,1.1s1.7,1.7,2.1,3l-3.9,1.7c-0.6-1.4-1.5-2-2.6-2c-0.6,0-1.1,0.1-1.4,0.4s-0.5,0.6-0.5,1.1c0,0.4,0.1,0.7,0.4,0.9s0.7,0.4,1.2,0.6c0.6,0.2,1.4,0.4,2.5,0.7c1.1,0.3,2,0.6,2.8,1c0.8,0.4,1.5,0.9,1.9,1.6s0.6,1.6,0.6,2.7c0,1.6-0.6,3-1.7,4C71.8,31,70.3,31.6,68.5,31.6z"/><path class="st1" d="M84.3,31.6c-1.8,0-3.3-0.6-4.4-1.8s-1.7-2.9-1.7-5c0-1.3,0.3-2.5,0.8-3.5c0.5-1,1.3-1.9,2.2-2.5c1-0.6,2.1-0.9,3.4-0.9c1.6,0,2.9,0.5,3.8,1.5c0.9,1,1.4,2.4,1.4,4.2h-7c0.1,1.1,0.4,1.9,0.9,2.4s1.2,0.8,2.1,0.8c1.5,0,2.5-0.6,2.9-1.9l3.8,1.6c-0.3,0.9-0.8,1.7-1.5,2.4C87.8,30.9,86.3,31.6,84.3,31.6z M86.6,19.3c-0.4-0.6-1-1-1.9-1s-1.5,0.3-1.9,1c-0.4,0.6-0.7,1.5-0.7,2.6h5.2C87.3,20.8,87.1,19.9,86.6,19.3z"/><path class="st1" d="M101.4,31.4V11.8h4.7v1.8c1-1.3,2.4-2,4.1-2c0.3,0,0.6,0,0.8,0.1l-0.3,4.4c-0.4-0.1-0.8-0.1-1.2-0.1c-1.1,0-2.1,0.4-2.8,1.2c-0.7,0.8-1.1,2-1.1,3.6v10.6H101.4z"/><path class="st1" d="M117.5,31.4V2h4.7v29.4H117.5z"/><path class="st1" d="M129.5,31.4V11.8h4.7v2.3c1.1-1.7,2.8-2.6,5-2.6c1.2,0,2.1,0.2,2.8,0.7s1.2,1,1.5,1.7s0.4,1.6,0.4,2.8v14.7h-4.7V18.2c0-1.2-0.2-2.1-0.7-2.7c-0.5-0.6-1.1-0.9-2-0.9s-1.5,0.3-2,0.8s-0.7,1.4-0.7,2.5v13.5H129.5z"/><path class="st1" d="M152,36.9v-2c0-1.8,1.4-3.2,3.2-3.2h11.7c1.8,0,3.2,1.4,3.2,3.2v2"/></g></svg>`;
-
 export default function Page() {
   const { data: session } = useSession();
   const cameraInputRef = useRef(null);
@@ -54,11 +52,8 @@ export default function Page() {
     setIsGenerating(true);
     try {
       const doc = new jsPDF('landscape');
-      
-      // BRANDING
       doc.setFontSize(18); doc.setTextColor(0, 150, 64);
       doc.text('REDINGTON', 14, 18);
-      
       doc.setFontSize(10); doc.setTextColor(0);
       doc.text('PAYMENT VOUCHER', 14, 30);
       doc.text(`PAY TO: Ivan Ong`, 14, 36);
@@ -70,14 +65,13 @@ export default function Page() {
 
       autoTable(doc, {
         startY: 45,
-        head: [['No.', 'Date', 'Description', 'Reference / Booking ID', 'Amount (SGD)']],
+        head: [['No.', 'Date', 'Description', 'Reference', 'Amount (SGD)']],
         body: tableRows,
         theme: 'grid',
         headStyles: { fillColor: [240, 240, 240], textColor: 0, fontStyle: 'bold' },
         foot: [[{ content: 'TOTAL CLAIM', colSpan: 4, styles: { halign: 'right', fontStyle: 'bold' } }, { content: `S$ ${totalSgd.toFixed(2)}`, styles: { fontStyle: 'bold' } }]]
       });
 
-      // INSTANT IMAGE ATTACHMENTS
       rows.forEach((row, index) => {
         if (row.image) {
           doc.addPage('a4', 'portrait');
@@ -92,63 +86,76 @@ export default function Page() {
     setIsGenerating(false);
   }
 
-  if (!session) return <div className="flex h-screen items-center justify-center"><button onClick={() => signIn('google')} className="bg-[#009640] text-white px-10 py-4 rounded-xl font-bold">Sign In</button></div>;
+  if (!session) return <div className="flex h-screen items-center justify-center p-6"><button onClick={() => signIn('google')} className="w-full max-w-sm bg-[#009640] text-white py-4 rounded-2xl font-bold shadow-lg">Sign In with Google</button></div>;
 
   return (
-    <div className="max-w-6xl mx-auto p-6 font-sans">
-      <div className="flex justify-between items-center mb-10 pb-6 border-b">
-        <div dangerouslySetInnerHTML={{ __html: LOGO_SVG }} className="h-10 w-auto" />
-        <button onClick={() => signOut()} className="text-[10px] font-bold text-slate-300 uppercase hover:text-red-500">Sign Out</button>
+    <div className="max-w-full md:max-w-4xl mx-auto p-4 md:p-6 font-sans bg-slate-50 min-h-screen">
+      {/* Top Left Header */}
+      <div className="flex flex-col mb-6 pt-2">
+        <h1 className="text-[#009640] font-black text-xl tracking-tight leading-none">REDINGTON</h1>
+        <p className="text-slate-400 font-bold text-[10px] uppercase tracking-widest mt-1">Payment Voucher</p>
       </div>
 
-      <div className="flex gap-2 mb-8 bg-slate-100 p-1.5 rounded-2xl w-fit">
-        <button onClick={() => setActiveTab('voucher')} className={`px-8 py-3 rounded-xl text-sm font-bold transition-all ${activeTab === 'voucher' ? 'bg-white shadow text-[#009640]' : 'text-slate-500'}`}>My Voucher</button>
-        <button onClick={() => setActiveTab('add')} className={`px-8 py-3 rounded-xl text-sm font-bold transition-all ${activeTab === 'add' ? 'bg-white shadow text-[#009640]' : 'text-slate-500'}`}>+ Upload Snipped Receipt</button>
+      {/* Tabs - Centered for iOS */}
+      <div className="flex gap-1 mb-6 bg-slate-200 p-1 rounded-xl w-full">
+        <button onClick={() => setActiveTab('voucher')} className={`flex-1 py-3 rounded-lg text-xs font-bold transition-all ${activeTab === 'voucher' ? 'bg-white shadow text-[#009640]' : 'text-slate-500'}`}>Voucher</button>
+        <button onClick={() => setActiveTab('add')} className={`flex-1 py-3 rounded-lg text-xs font-bold transition-all ${activeTab === 'add' ? 'bg-white shadow text-[#009640]' : 'text-slate-500'}`}>+ Add Receipt</button>
+        <button onClick={() => signOut()} className="px-4 py-3 text-slate-400 text-[10px] font-bold uppercase">Exit</button>
       </div>
 
       {activeTab === 'voucher' && (
-        <div className="bg-white rounded-3xl border shadow-sm p-6">
-          <table className="w-full text-xs text-left">
-            <thead>
-              <tr className="text-slate-400 border-b uppercase text-[10px] tracking-widest font-bold">
-                <th className="pb-4">Date</th>
-                <th className="pb-4 w-1/2">Description</th>
-                <th className="pb-4">Reference</th>
-                <th className="pb-4 text-right">SGD</th>
-                <th className="pb-4"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-50">
-              {rows.map((row, i) => (
-                <tr key={i} className="group">
-                  <td className="py-4"><input className="w-20 border-none bg-transparent" value={row.date} onChange={e => updateRow(i, 'date', e.target.value)} /></td>
-                  <td className="py-4">
-                    <input className="w-full border-none bg-transparent font-bold text-slate-800" value={row.desc} onChange={e => updateRow(i, 'desc', e.target.value)} />
-                    {row.image && <span className="text-green-500 text-[9px] font-bold block mt-1 uppercase italic">Screenshot Attached</span>}
-                  </td>
-                  <td className="py-4"><input className="w-full border-none bg-transparent text-slate-500" value={row.ref} placeholder="Ref#" onChange={e => updateRow(i, 'ref', e.target.value)} /></td>
-                  <td className="py-4 text-right">
-                    <input className="w-20 border-none bg-green-50 rounded p-1 text-right font-black text-slate-900" type="number" step="0.01" value={row.sgd} onChange={e => updateRow(i, 'sgd', e.target.value)} />
-                  </td>
-                  <td className="py-4 text-right opacity-0 group-hover:opacity-100"><button onClick={() => setRows(rows.filter((_, idx) => idx !== i))} className="text-red-300">✕</button></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <button onClick={generatePDF} className="mt-10 w-full bg-[#009640] text-white py-5 rounded-2xl font-black text-lg shadow-xl shadow-green-100">
-            {isGenerating ? "Creating PDF..." : "Download PDF Voucher"}
+        <div className="space-y-4">
+          {/* Mobile Card Layout */}
+          <div className="block md:hidden space-y-3">
+            {rows.map((row, i) => (
+              <div key={i} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm relative">
+                <button onClick={() => setRows(rows.filter((_, idx) => idx !== i))} className="absolute top-4 right-4 text-slate-300">✕</button>
+                <div className="text-[10px] text-slate-400 font-bold uppercase mb-1">{row.date}</div>
+                <input className="w-full border-none p-0 font-bold text-slate-800 text-sm mb-2 focus:ring-0" value={row.desc} onChange={e => updateRow(i, 'desc', e.target.value)} />
+                <div className="flex justify-between items-end mt-4">
+                   <div className="text-[10px] text-green-600 font-bold italic">{row.image ? "✓ Attached" : ""}</div>
+                   <div className="flex items-center bg-green-50 px-3 py-1 rounded-lg">
+                      <span className="text-[10px] font-bold text-green-700 mr-2">SGD</span>
+                      <input className="w-16 bg-transparent border-none p-0 text-right font-black text-slate-900 focus:ring-0" type="number" step="0.01" value={row.sgd} onChange={e => updateRow(i, 'sgd', e.target.value)} />
+                   </div>
+                </div>
+              </div>
+            ))}
+            {rows.length === 0 && <div className="text-center py-10 text-slate-400 text-sm">No receipts added yet.</div>}
+          </div>
+
+          {/* Desktop Table Layout (hidden on mobile) */}
+          <div className="hidden md:block bg-white rounded-3xl border p-6">
+            <table className="w-full text-xs text-left">
+              <thead><tr className="text-slate-400 border-b text-[10px] font-bold uppercase tracking-widest"><th className="pb-4">Date</th><th className="pb-4 w-1/2">Description</th><th className="pb-4 text-right">SGD</th><th className="pb-4"></th></tr></thead>
+              <tbody className="divide-y divide-slate-50">
+                {rows.map((row, i) => (
+                  <tr key={i} className="group">
+                    <td className="py-4 text-slate-500">{row.date}</td>
+                    <td className="py-4 font-bold text-slate-800">{row.desc}</td>
+                    <td className="py-4 text-right font-black">S$ {row.sgd.toFixed(2)}</td>
+                    <td className="py-4 text-right"><button onClick={() => setRows(rows.filter((_, idx) => idx !== i))} className="text-red-300">✕</button></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <button onClick={generatePDF} className="fixed bottom-6 left-4 right-4 md:relative md:bottom-0 md:left-0 md:mt-6 bg-[#009640] text-white py-4 rounded-2xl font-black text-lg shadow-xl shadow-green-200">
+            {isGenerating ? "Creating PDF..." : "Download PDF"}
           </button>
+          <div className="h-20 md:hidden"></div> {/* Spacer for fixed button */}
         </div>
       )}
 
       {activeTab === 'add' && (
-        <div className="grid grid-cols-1 gap-8">
-          <button onClick={() => cameraInputRef.current.click()} className="p-20 border-4 border-dashed border-slate-100 rounded-[3rem] bg-white hover:bg-slate-50 flex flex-col items-center justify-center transition-all group">
-            <span className="text-5xl mb-4 group-hover:scale-110 transition-transform">🖼️</span>
-            <span className="font-bold text-slate-700 uppercase tracking-wider">Upload Screenshot / Snipping Tool Image</span>
+        <div className="flex flex-col gap-4">
+          <button onClick={() => cameraInputRef.current.click()} className="aspect-square w-full border-4 border-dashed border-slate-200 rounded-[2.5rem] bg-white flex flex-col items-center justify-center active:bg-slate-50 transition-colors">
+            <span className="text-5xl mb-4">📸</span>
+            <span className="font-bold text-slate-700 uppercase tracking-wider text-sm">Capture Receipt</span>
           </button>
           <input type="file" accept="image/*" ref={cameraInputRef} className="hidden" onChange={processImage} />
-          {isProcessing && <div className="p-20 text-center animate-pulse text-[#009640] font-black uppercase tracking-widest">AI Analyzing...</div>}
+          {isProcessing && <div className="text-center py-4 animate-pulse text-[#009640] font-bold text-xs uppercase tracking-widest">AI Scanning...</div>}
         </div>
       )}
     </div>
