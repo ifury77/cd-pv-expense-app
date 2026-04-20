@@ -15,6 +15,7 @@ export default function Page() {
   const [syncing, setSyncing] = useState(false);
   const cameraRef = useRef(null);
 
+  // CLOUD SYNC: LOAD
   useEffect(() => {
     if (session) {
       fetch('/api/sync').then(res => res.json()).then(data => {
@@ -23,6 +24,7 @@ export default function Page() {
     }
   }, [session]);
 
+  // CLOUD SYNC: SAVE
   useEffect(() => {
     if (session && rows.length > 0) {
       setSyncing(true);
@@ -32,13 +34,14 @@ export default function Page() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ rows })
         }).finally(() => setSyncing(false));
-      }, 1000);
+      }, 1500);
       return () => clearTimeout(delayDebounce);
     }
   }, [rows, session]);
 
   const totalSgd = rows.reduce((sum, row) => sum + (parseFloat(row.sgd) || 0), 0);
 
+  // PDF GENERATION WITH ATTACHMENTS
   const generatePDF = () => {
     const doc = new jsPDF('p', 'mm', 'a4');
     doc.setFontSize(22); doc.setTextColor(0, 150, 64);
@@ -52,18 +55,32 @@ export default function Page() {
       headStyles: { fillColor: [0, 150, 64] }
     });
 
-    // Add attachments to the end of the PDF
     rows.forEach((row, i) => {
       if (row.image) {
         doc.addPage();
+        doc.setTextColor(100);
         doc.text(`Attachment ${i + 1}: ${row.desc}`, 14, 20);
         doc.addImage(row.image, 'JPEG', 14, 30, 180, 0);
       }
     });
-
     doc.save(`Voucher_${new Date().toLocaleDateString()}.pdf`);
   };
 
+  // GMAIL SEARCH
+  async function handleGmailSearch() {
+    setIsSearching(true);
+    try {
+      const res = await fetch(`/api/gmail/search?q=receipt OR invoice OR bill OR "tax invoice"`);
+      const data = await res.json();
+      setSearchResults((data.results || []).map(r => {
+        const amtMatch = r.snippet?.match(/(?:SGD|S\$|Total|Charged|Fee)\s?S?\$?\s?([\d.,]+)/i);
+        return { ...r, editAmount: amtMatch ? amtMatch[1].replace(/,/g, '') : "0.00" };
+      }));
+    } catch (e) { alert("Gmail search failed"); }
+    setIsSearching(false);
+  }
+
+  // BUSINESS CARD SCAN
   const processCard = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -78,8 +95,7 @@ export default function Page() {
           body: JSON.stringify({ image: base64 })
         });
         const data = await res.json();
-        // Save the image with the record
-        setCards(prev => [{ ...data, image: base64, id: Date.now() }, ...prev]);
+        setCards(prev => [{ ...data, id: Date.now() }, ...prev]);
       } catch (err) { alert("Scan failed"); }
       setIsProcessing(false);
     };
@@ -87,34 +103,37 @@ export default function Page() {
   };
 
   if (status === "loading") return <div className="p-20 text-center font-black text-slate-300">LOADING...</div>;
-  if (!session) return <div className="h-screen flex items-center justify-center p-8 bg-white"><button onClick={() => signIn('google')} className="w-full max-w-xs bg-[#009640] text-white py-5 rounded-[2rem] font-black text-lg shadow-xl">Login</button></div>;
+  if (!session) return <div className="h-screen flex items-center justify-center p-8"><button onClick={() => signIn('google')} className="w-full max-w-xs bg-[#009640] text-white py-5 rounded-[2rem] font-black shadow-xl">Login</button></div>;
 
   return (
     <div className="max-w-md mx-auto p-4 font-sans min-h-screen bg-slate-50 pb-40">
       <div className="flex justify-between items-center mb-6 pt-4">
         <div>
-          <h1 className="text-[#009640] font-black text-xl leading-none uppercase">Redington</h1>
-          <p className="text-[8px] font-bold text-slate-400 tracking-widest mt-1 uppercase">{syncing ? '● Saving to Cloud...' : '○ All Synced'}</p>
+          <h1 className="text-[#009640] font-black text-xl uppercase">Redington</h1>
+          <p className="text-[8px] font-bold text-slate-400 tracking-widest mt-1 uppercase">{syncing ? '● Syncing...' : '○ Cloud Synced'}</p>
         </div>
         <button onClick={() => signOut()} className="bg-white border border-slate-200 px-4 py-2 rounded-xl text-[10px] font-black text-slate-400">Log Out</button>
       </div>
 
+      {/* TAB NAVIGATION */}
       <div className="flex gap-1 mb-8 bg-slate-200 p-1 rounded-2xl">
-        <button onClick={() => setActiveTab('cards')} className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase ${activeTab === 'cards' ? 'bg-white text-[#009640]' : 'text-slate-500'}`}>Cards</button>
-        <button onClick={() => setActiveTab('voucher')} className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase ${activeTab === 'voucher' ? 'bg-white text-[#009640]' : 'text-slate-500'}`}>Voucher</button>
-        <button onClick={() => setActiveTab('gmail')} className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase ${activeTab === 'gmail' ? 'bg-white text-[#009640]' : 'text-slate-500'}`}>Gmail</button>
+        <button onClick={() => setActiveTab('cards')} className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase transition-all ${activeTab === 'cards' ? 'bg-white text-[#009640] shadow-sm' : 'text-slate-500'}`}>Cards</button>
+        <button onClick={() => setActiveTab('voucher')} className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase transition-all ${activeTab === 'voucher' ? 'bg-white text-[#009640] shadow-sm' : 'text-slate-500'}`}>Voucher</button>
+        <button onClick={() => setActiveTab('gmail')} className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase transition-all ${activeTab === 'gmail' ? 'bg-white text-[#009640] shadow-sm' : 'text-slate-500'}`}>Gmail</button>
       </div>
 
+      {/* CARDS TAB */}
       {activeTab === 'cards' && (
         <div className="space-y-4">
-          <button onClick={() => cameraRef.current.click()} className="w-full border-4 border-dashed border-slate-200 aspect-video rounded-[2rem] bg-white flex flex-col items-center justify-center">
+          <button onClick={() => cameraRef.current.click()} className="w-full border-4 border-dashed border-slate-200 aspect-video rounded-[2rem] bg-white flex flex-col items-center justify-center active:bg-slate-50">
             <span className="text-5xl mb-3">🪪</span>
-            <span className="font-black text-slate-700 uppercase text-[10px]">Scan Business Card</span>
+            <span className="font-black text-slate-700 uppercase text-[10px]">Scan Card</span>
           </button>
           <input type="file" accept="image/*" ref={cameraRef} className="hidden" onChange={processCard} />
+          {isProcessing && <div className="text-center animate-pulse text-[#009640] font-black text-[10px]">PROCESSING...</div>}
           {cards.map(card => (
             <div key={card.id} className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm relative">
-               <button onClick={() => setCards(cards.filter(c => c.id !== card.id))} className="absolute top-5 right-6 text-slate-300">✕</button>
+              <button onClick={() => setCards(cards.filter(c => c.id !== card.id))} className="absolute top-5 right-6 text-slate-300">✕</button>
               <input className="w-full font-black text-slate-900 text-lg mb-2 border-none p-0 focus:ring-0" value={card.name} onChange={(e) => setCards(cards.map(c => c.id === card.id ? {...c, name: e.target.value} : c))} />
               <div className="text-[11px] text-slate-500 space-y-1 mb-6">
                 <p>📞 {card.phone || "---"}</p>
@@ -131,6 +150,7 @@ export default function Page() {
         </div>
       )}
 
+      {/* VOUCHER TAB */}
       {activeTab === 'voucher' && (
         <div className="space-y-4">
           {rows.map((row, i) => (
@@ -139,16 +159,38 @@ export default function Page() {
               <div className="text-[9px] text-slate-400 font-bold uppercase mb-1">{row.date}</div>
               <div className="font-black text-slate-800 text-sm mb-4 leading-tight">{row.desc}</div>
               <div className="flex justify-between items-center">
-                <span className="text-[9px] font-black text-green-600 uppercase italic">{row.image ? "● Image Saved" : "○ No Image"}</span>
+                <span className="text-[8px] font-black text-green-600 uppercase italic">{row.image ? "● Attached" : "○ No Image"}</span>
                 <span className="bg-green-50 text-green-700 px-4 py-2 rounded-xl font-black text-sm">S$ {parseFloat(row.sgd).toFixed(2)}</span>
               </div>
             </div>
           ))}
           {rows.length > 0 && (
-            <button onClick={generatePDF} className="fixed bottom-10 left-6 right-6 bg-[#009640] text-white py-5 rounded-[2rem] font-black text-sm shadow-2xl z-50 uppercase">
+            <button onClick={generatePDF} className="fixed bottom-10 left-6 right-6 bg-[#009640] text-white py-5 rounded-[2rem] font-black text-sm shadow-2xl z-50 uppercase tracking-widest">
                Download PDF (S$ {totalSgd.toFixed(2)})
             </button>
           )}
+        </div>
+      )}
+
+      {/* GMAIL TAB */}
+      {activeTab === 'gmail' && (
+        <div className="space-y-4">
+          <button onClick={handleGmailSearch} disabled={isSearching} className="w-full bg-[#009640] text-white py-5 rounded-[2rem] font-black text-[10px] uppercase tracking-widest shadow-lg">
+            {isSearching ? "Searching..." : "🔍 Search Gmail Receipts"}
+          </button>
+          {searchResults.map((res, i) => (
+            <div key={i} className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm">
+              <div className="text-[9px] text-blue-500 font-bold uppercase mb-1">{res.date}</div>
+              <div className="text-xs font-black text-slate-800 mb-4 line-clamp-2">{res.subject}</div>
+              <div className="flex justify-between items-center pt-4 border-t border-slate-50">
+                <div className="bg-slate-100 px-3 py-2 rounded-xl font-black text-xs text-slate-600">S$ {res.editAmount}</div>
+                <button onClick={() => {
+                   setRows(prev => [...prev, { date: res.date, desc: res.subject, sgd: parseFloat(res.editAmount) || 0, image: null }]);
+                   setActiveTab('voucher');
+                }} className="bg-[#009640] text-white px-6 py-2 rounded-xl text-[10px] font-black uppercase">Add</button>
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>
