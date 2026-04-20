@@ -37,16 +37,29 @@ export default function Page() {
           body: JSON.stringify({ image: base64Image })
         });
         const data = await res.json();
+        
+        // Improved data fallback
         setRows(prev => [...prev, {
           date: data.date || new Date().toLocaleDateString('en-GB'),
-          desc: data.desc || "Scanned Receipt",
-          ref: "",
+          desc: data.description || data.desc || "Scanned Receipt",
+          ref: data.reference || "",
           sgd: parseFloat(data.amount) || 0,
           image: base64Image,
           html: null
         }]);
         setActiveTab('voucher');
-      } catch (err) { alert("AI Scan failed."); }
+      } catch (err) { 
+        // Fallback row if AI fails completely
+        setRows(prev => [...prev, {
+          date: new Date().toLocaleDateString('en-GB'),
+          desc: "New Receipt (Manual Edit)",
+          ref: "",
+          sgd: 0,
+          image: base64Image,
+          html: null
+        }]);
+        setActiveTab('voucher');
+      }
       setIsProcessing(false);
     };
     reader.readAsDataURL(file);
@@ -97,7 +110,7 @@ export default function Page() {
       autoTable(doc, {
         startY: 45,
         head: [['No.', 'Date', 'Description', 'Reference', 'Amount (SGD)']],
-        body: rows.map((row, i) => [i + 1, row.date, row.desc, row.ref, `S$ ${row.sgd.toFixed(2)}`]),
+        body: rows.map((row, i) => [i + 1, row.date, row.desc, row.ref, `S$ ${parseFloat(row.sgd).toFixed(2)}`]),
         theme: 'grid',
         headStyles: { fillColor: [240, 240, 240], textColor: 0, fontStyle: 'bold' },
         foot: [[{ content: 'TOTAL CLAIM', colSpan: 4, styles: { halign: 'right', fontStyle: 'bold' } }, { content: `S$ ${totalSgd.toFixed(2)}`, styles: { fontStyle: 'bold' } }]]
@@ -128,15 +141,14 @@ export default function Page() {
     setIsGenerating(false);
   }
 
-  // --- LOGIN CHECK ---
-  if (status === "loading") return <div className="flex h-screen items-center justify-center bg-slate-50 font-bold text-slate-400 uppercase tracking-widest text-xs">Loading...</div>;
+  if (status === "loading") return <div className="flex h-screen items-center justify-center bg-slate-50 text-slate-400 font-bold uppercase tracking-widest text-[10px]">Loading...</div>;
   
   if (!session) {
     return (
-      <div className="flex flex-col h-screen items-center justify-center p-6 bg-white">
-        <h1 className="text-[#009640] font-black text-3xl mb-2 tracking-tight">REDINGTON</h1>
-        <p className="text-slate-400 font-bold text-xs uppercase tracking-[0.2em] mb-12">Voucher System</p>
-        <button onClick={() => signIn('google')} className="w-full max-w-sm bg-[#009640] text-white py-5 rounded-3xl font-black text-lg shadow-xl shadow-green-100 active:scale-95 transition-all">
+      <div className="flex flex-col h-screen items-center justify-center p-8 bg-white text-center">
+        <h1 className="text-[#009640] font-black text-4xl tracking-tighter">REDINGTON</h1>
+        <p className="text-slate-400 font-bold text-[10px] uppercase tracking-[0.3em] mb-12">Voucher Portal</p>
+        <button onClick={() => signIn('google')} className="w-full max-w-sm bg-[#009640] text-white py-5 rounded-3xl font-black text-lg shadow-xl shadow-green-100">
           Sign In with Google
         </button>
       </div>
@@ -144,74 +156,90 @@ export default function Page() {
   }
 
   return (
-    <div className="max-w-full md:max-w-4xl mx-auto p-4 md:p-6 font-sans bg-slate-50 min-h-screen">
-      <div className="flex justify-between items-start mb-6 pt-2">
+    <div className="max-w-full md:max-w-4xl mx-auto p-4 md:p-6 font-sans bg-slate-50 min-h-screen pb-32">
+      <div className="flex justify-between items-center mb-8 pt-4">
         <div>
           <h1 className="text-[#009640] font-black text-xl leading-none">REDINGTON</h1>
-          <p className="text-slate-400 font-bold text-[10px] uppercase tracking-widest mt-1">Payment Voucher</p>
+          <p className="text-slate-500 font-bold text-[9px] uppercase tracking-widest mt-1">Payment Voucher</p>
         </div>
-        <button onClick={() => signOut()} className="text-[9px] font-black text-slate-300 uppercase border border-slate-200 px-3 py-1 rounded-full">Sign Out</button>
+        <button onClick={() => signOut()} className="bg-white border border-slate-200 px-4 py-2 rounded-xl text-[10px] font-black text-slate-400 uppercase shadow-sm">Log Out</button>
       </div>
 
-      <div className="flex gap-1 mb-6 bg-slate-200 p-1 rounded-xl w-full">
-        <button onClick={() => setActiveTab('voucher')} className={`flex-1 py-3 rounded-lg text-[11px] font-bold transition-all ${activeTab === 'voucher' ? 'bg-white shadow text-[#009640]' : 'text-slate-500'}`}>Voucher</button>
-        <button onClick={() => setActiveTab('add')} className={`flex-1 py-3 rounded-lg text-[11px] font-bold transition-all ${activeTab === 'add' ? 'bg-white shadow text-[#009640]' : 'text-slate-500'}`}>+ Upload</button>
-        <button onClick={() => setActiveTab('search')} className={`flex-1 py-3 rounded-lg text-[11px] font-bold transition-all ${activeTab === 'search' ? 'bg-white shadow text-[#009640]' : 'text-slate-500'}`}>Gmail</button>
+      <div className="flex gap-1 mb-8 bg-slate-200 p-1 rounded-2xl w-full">
+        <button onClick={() => setActiveTab('voucher')} className={`flex-1 py-3.5 rounded-xl text-[11px] font-black transition-all ${activeTab === 'voucher' ? 'bg-white shadow-sm text-[#009640]' : 'text-slate-500'}`}>My Claims</button>
+        <button onClick={() => setActiveTab('add')} className={`flex-1 py-3.5 rounded-xl text-[11px] font-black transition-all ${activeTab === 'add' ? 'bg-white shadow-sm text-[#009640]' : 'text-slate-500'}`}>+ Photo</button>
+        <button onClick={() => setActiveTab('search')} className={`flex-1 py-3.5 rounded-xl text-[11px] font-black transition-all ${activeTab === 'search' ? 'bg-white shadow-sm text-[#009640]' : 'text-slate-500'}`}>Gmail</button>
       </div>
 
       {activeTab === 'voucher' && (
-        <div className="space-y-4 pb-32">
+        <div className="space-y-4">
           {rows.map((row, i) => (
-            <div key={i} className="bg-white p-4 rounded-2xl border shadow-sm relative">
-              <button onClick={() => setRows(rows.filter((_, idx) => idx !== i))} className="absolute top-4 right-4 text-slate-300">✕</button>
+            <div key={i} className="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm relative">
+              <button onClick={() => setRows(rows.filter((_, idx) => idx !== i))} className="absolute top-5 right-5 text-slate-300 w-8 h-8 flex items-center justify-center bg-slate-50 rounded-full">✕</button>
               <div className="text-[10px] text-slate-400 font-bold uppercase mb-1">{row.date}</div>
-              <input className="w-full border-none p-0 font-bold text-slate-800 text-sm focus:ring-0" value={row.desc} onChange={e => updateRow(i, 'desc', e.target.value)} />
-              {row.html && <button onClick={() => { const w = window.open(); w.document.write(row.html); }} className="text-blue-500 text-[10px] font-bold uppercase mt-2 block underline">View Email</button>}
-              <div className="flex justify-between items-end mt-4">
-                <span className="text-[9px] font-bold text-green-600 uppercase italic">{(row.image || row.html) ? "✓ Attachment Linked" : "No Attachment"}</span>
-                <div className="flex items-center bg-green-50 px-3 py-1 rounded-lg">
-                  <span className="text-[10px] font-bold text-green-700 mr-2">SGD</span>
-                  <input className="w-16 bg-transparent border-none p-0 text-right font-black text-slate-900 focus:ring-0" type="number" step="0.01" value={row.sgd} onChange={e => updateRow(i, 'sgd', e.target.value)} />
+              
+              {/* Editable Description */}
+              <input 
+                className="w-full border-b border-transparent hover:border-slate-100 focus:border-[#009640] p-0 font-black text-slate-900 text-lg focus:ring-0 mb-1 transition-colors" 
+                value={row.desc} 
+                onChange={e => updateRow(i, 'desc', e.target.value)} 
+                placeholder="Description"
+              />
+              
+              {row.html && <button onClick={() => { const w = window.open(); w.document.write(row.html); }} className="text-blue-500 text-[10px] font-bold uppercase underline decoration-2 underline-offset-4">View Email</button>}
+              
+              <div className="flex justify-between items-end mt-6">
+                <span className="text-[9px] font-black text-green-600 uppercase tracking-tighter italic">{(row.image || row.html) ? "● Attached" : "○ No File"}</span>
+                <div className="flex items-center bg-green-50 px-4 py-2 rounded-xl border border-green-100">
+                  <span className="text-[10px] font-black text-green-700 mr-3">SGD</span>
+                  <input 
+                    className="w-20 bg-transparent border-none p-0 text-right font-black text-slate-900 text-xl focus:ring-0" 
+                    type="number" 
+                    step="0.01" 
+                    value={row.sgd} 
+                    onChange={e => updateRow(i, 'sgd', e.target.value)} 
+                  />
                 </div>
               </div>
             </div>
           ))}
-          <button onClick={generatePDF} className="fixed bottom-6 left-4 right-4 bg-[#009640] text-white py-4 rounded-2xl font-black text-lg shadow-xl z-10 active:scale-[0.98]">
-            {isGenerating ? "Capturing Attachments..." : "Download PDF"}
+          
+          <button onClick={generatePDF} className="fixed bottom-8 left-6 right-6 bg-[#009640] text-white py-5 rounded-[2rem] font-black text-lg shadow-2xl shadow-green-200 z-50">
+            {isGenerating ? "Creating PDF..." : "Download PDF Voucher"}
           </button>
         </div>
       )}
 
       {activeTab === 'add' && (
         <div className="flex flex-col gap-4">
-          <button onClick={() => cameraInputRef.current.click()} className="aspect-square w-full border-4 border-dashed border-slate-200 rounded-[2.5rem] bg-white flex flex-col items-center justify-center">
-            <span className="text-5xl mb-4">📸</span>
-            <span className="font-bold text-slate-700 uppercase tracking-wider text-sm">Upload Photo / Snip</span>
+          <button onClick={() => cameraInputRef.current.click()} className="aspect-square w-full border-4 border-dashed border-slate-200 rounded-[3rem] bg-white flex flex-col items-center justify-center active:bg-slate-50 transition-all">
+            <span className="text-6xl mb-6">📸</span>
+            <span className="font-black text-slate-700 uppercase tracking-widest text-xs">Snap Receipt</span>
           </button>
           <input type="file" accept="image/*" ref={cameraInputRef} className="hidden" onChange={processImage} />
-          {isProcessing && <div className="text-center py-4 animate-pulse text-[#009640] font-bold text-xs uppercase tracking-widest">AI Scanning...</div>}
+          {isProcessing && <div className="text-center py-8 animate-pulse text-[#009640] font-black text-[10px] uppercase tracking-[0.3em]">AI OCR Reading...</div>}
         </div>
       )}
 
       {activeTab === 'search' && (
         <div className="space-y-4">
-          <button onClick={handleSearch} disabled={isSearching} className="w-full bg-slate-900 text-white py-4 rounded-2xl font-bold">
-            {isSearching ? "Searching..." : "🔍 Search Gmail"}
+          <button onClick={handleSearch} disabled={isSearching} className="w-full bg-slate-900 text-white py-5 rounded-3xl font-black shadow-lg">
+            {isSearching ? "Searching Gmail..." : "🔍 Search Receipts"}
           </button>
           {searchResults.map((res, i) => (
-            <div key={i} className="bg-white p-4 rounded-2xl border mb-3">
-              <div className="text-[9px] text-blue-500 font-bold mb-1">{res.date}</div>
-              <div className="text-sm font-bold text-slate-800 mb-3">{res.subject}</div>
-              <div className="flex justify-between items-center pt-3 border-t">
-                <div className="bg-slate-50 px-3 py-1 rounded-lg">
-                  <span className="text-[10px] font-bold text-slate-400 mr-2">S$</span>
-                  <input className="w-16 bg-transparent border-none p-0 font-bold text-slate-900 text-sm focus:ring-0" value={res.editAmount} onChange={e => {
+            <div key={i} className="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm">
+              <div className="text-[10px] text-blue-500 font-bold mb-1 uppercase">{res.date}</div>
+              <div className="text-sm font-black text-slate-800 mb-4 leading-tight">{res.subject}</div>
+              <div className="flex justify-between items-center pt-4 border-t border-slate-50">
+                <div className="bg-slate-100 px-4 py-2 rounded-xl">
+                  <span className="text-[10px] font-black text-slate-400 mr-2">S$</span>
+                  <input className="w-16 bg-transparent border-none p-0 font-black text-slate-900 text-base focus:ring-0" value={res.editAmount} onChange={e => {
                     const updated = [...searchResults];
                     updated[i].editAmount = e.target.value;
                     setSearchResults(updated);
                   }} />
                 </div>
-                <button onClick={() => addFromGmail(res)} className="bg-[#009640] text-white px-6 py-2 rounded-xl text-xs font-bold">Add</button>
+                <button onClick={() => addFromGmail(res)} className="bg-[#009640] text-white px-8 py-3 rounded-2xl text-[11px] font-black uppercase tracking-wider shadow-md">Add</button>
               </div>
             </div>
           ))}
