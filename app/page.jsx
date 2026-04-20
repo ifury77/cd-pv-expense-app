@@ -10,12 +10,13 @@ export default function Page() {
   const [rows, setRows] = useState([]);
   const [cards, setCards] = useState([]);
   const [searchResults, setSearchResults] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const cameraRef = useRef(null);
   const cardCameraRef = useRef(null);
 
-  // Load from Cloud
+  // --- CLOUD SYNC LOGIC ---
   useEffect(() => {
     if (session) {
       fetch('/api/sync').then(res => res.json()).then(data => {
@@ -24,7 +25,6 @@ export default function Page() {
     }
   }, [session]);
 
-  // Save to Cloud
   useEffect(() => {
     if (session && rows.length > 0) {
       setSyncing(true);
@@ -39,6 +39,7 @@ export default function Page() {
     }
   }, [rows, session]);
 
+  // --- VOUCHER & OCR LOGIC ---
   const processReceipt = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -53,13 +54,8 @@ export default function Page() {
           body: JSON.stringify({ image: base64 })
         });
         const data = await res.json();
-        setRows(prev => [{
-          date: data.date,
-          desc: data.desc,
-          sgd: parseFloat(data.amount) || 0,
-          image: base64 // Save the screenshot!
-        }, ...prev]);
-      } catch (err) { alert("OCR failed"); }
+        setRows(prev => [{ date: data.date, desc: data.desc, sgd: parseFloat(data.amount) || 0, image: base64 }, ...prev]);
+      } catch (err) { alert("OCR Failed"); }
       setIsProcessing(false);
     };
     reader.readAsDataURL(file);
@@ -85,10 +81,46 @@ export default function Page() {
         doc.addImage(row.image, 'JPEG', 14, 30, 180, 0);
       }
     });
-    doc.save(`Voucher.pdf`);
+    doc.save(`Voucher_${new Date().toLocaleDateString()}.pdf`);
   };
 
-  if (!session) return <div className="h-screen flex items-center justify-center p-8"><button onClick={() => signIn('google')} className="w-full max-w-xs bg-[#009640] text-white py-5 rounded-[2rem] font-black">Login</button></div>;
+  // --- GMAIL SEARCH LOGIC ---
+  async function handleGmailSearch() {
+    setIsSearching(true);
+    try {
+      const res = await fetch(`/api/gmail/search?q=receipt OR "tax invoice" OR bill OR invoice`);
+      const data = await res.json();
+      setSearchResults((data.results || []).map(r => {
+        const amtMatch = r.snippet?.match(/(?:SGD|S\$|Total|Charged|Fee)\s?S?\$?\s?([\d.,]+)/i);
+        return { ...r, editAmount: amtMatch ? amtMatch[1].replace(/,/g, '') : "0.00" };
+      }));
+    } catch (e) { alert("Search failed"); }
+    setIsSearching(false);
+  }
+
+  // --- CARD SCAN LOGIC ---
+  const processCard = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setIsProcessing(true);
+    const reader = new FileReader();
+    reader.onloadend = async () => {
+      try {
+        const res = await fetch('/api/card', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ image: reader.result })
+        });
+        const data = await res.json();
+        setCards(prev => [{ ...data, id: Date.now() }, ...prev]);
+      } catch (err) { alert("Card Scan Failed"); }
+      setIsProcessing(false);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  if (status === "loading") return <div className="p-20 text-center font-black text-slate-300 uppercase">Loading...</div>;
+  if (!session) return <div className="h-screen flex items-center justify-center p-8 bg-white"><button onClick={() => signIn('google')} className="w-full max-w-xs bg-[#009640] text-white py-5 rounded-[2rem] font-black text-lg">Login to Redington</button></div>;
 
   return (
     <div className="max-w-md mx-auto p-4 font-sans min-h-screen bg-slate-50 pb-40">
@@ -97,7 +129,7 @@ export default function Page() {
           <h1 className="text-[#009640] font-black text-xl uppercase">Redington</h1>
           <p className="text-[8px] font-bold text-slate-400 tracking-widest mt-1 uppercase">{syncing ? '● Syncing...' : '○ Saved'}</p>
         </div>
-        <button onClick={() => signOut()} className="text-[10px] font-black text-slate-400">Log Out</button>
+        <button onClick={() => signOut()} className="bg-white border border-slate-200 px-4 py-2 rounded-xl text-[10px] font-black text-slate-400">Log Out</button>
       </div>
 
       <div className="flex gap-1 mb-8 bg-slate-200 p-1 rounded-2xl">
@@ -108,41 +140,73 @@ export default function Page() {
 
       {activeTab === 'voucher' && (
         <div className="space-y-4">
-          <button onClick={() => cameraRef.current.click()} className="w-full bg-white border-4 border-dashed border-slate-200 py-10 rounded-[2rem] flex flex-col items-center">
+          <button onClick={() => cameraRef.current.click()} className="w-full bg-white border-4 border-dashed border-slate-200 py-10 rounded-[2rem] flex flex-col items-center active:scale-95 transition-all">
             <span className="text-4xl mb-2">📸</span>
-            <span className="text-[10px] font-black text-[#009640]">SCAN RECEIPT TO VOUCHER</span>
+            <span className="text-[10px] font-black text-[#009640] uppercase tracking-widest">Scan Receipt</span>
           </button>
           <input type="file" accept="image/*" ref={cameraRef} className="hidden" onChange={processReceipt} />
-
-          {isProcessing && <p className="text-center text-[10px] font-bold animate-pulse">AI ANALYZING...</p>}
-
+          {isProcessing && <div className="text-center animate-pulse text-[10px] font-black text-[#009640]">AI EXTRACTING...</div>}
           {rows.map((row, i) => (
             <div key={i} className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm relative">
-              <button onClick={() => setRows(rows.filter((_, idx) => idx !== i))} className="absolute top-5 right-6 text-slate-300">✕</button>
+              <button onClick={() => setRows(rows.filter((_, idx) => idx !== i))} className="absolute top-5 right-6 text-slate-200">✕</button>
               <div className="text-[9px] text-slate-400 font-bold uppercase mb-1">{row.date}</div>
-              <input className="w-full font-black text-slate-800 text-sm mb-4 border-none p-0 focus:ring-0" value={row.desc} onChange={(e) => {
-                const updated = [...rows]; updated[i].desc = e.target.value; setRows(updated);
-              }} />
+              <input className="w-full font-black text-slate-800 text-sm mb-4 border-none p-0 focus:ring-0" value={row.desc} onChange={(e) => { const r = [...rows]; r[i].desc = e.target.value; setRows(r); }} />
               <div className="flex justify-between items-center">
-                <span className="text-[8px] font-black text-green-600 uppercase italic">{row.image ? "● Attached" : "○ No File"}</span>
+                <span className="text-[8px] font-black text-green-600 italic">{row.image ? "● Attached" : "○ No File"}</span>
                 <div className="flex items-center bg-green-50 px-3 py-1 rounded-xl">
-                   <span className="text-[10px] font-black text-green-700 mr-1">SGD</span>
-                   <input type="number" className="w-16 bg-transparent border-none p-0 font-black text-green-700 text-sm focus:ring-0" value={row.sgd} onChange={(e) => {
-                     const updated = [...rows]; updated[i].sgd = e.target.value; setRows(updated);
-                   }} />
+                  <span className="text-[10px] font-black text-green-700 mr-1">SGD</span>
+                  <input type="number" className="w-16 bg-transparent border-none p-0 font-black text-green-700 text-sm focus:ring-0" value={row.sgd} onChange={(e) => { const r = [...rows]; r[i].sgd = e.target.value; setRows(r); }} />
                 </div>
               </div>
             </div>
           ))}
           {rows.length > 0 && (
-            <button onClick={generatePDF} className="fixed bottom-10 left-6 right-6 bg-[#009640] text-white py-5 rounded-[2rem] font-black text-sm shadow-2xl z-50">
-               DOWNLOAD PDF (S$ {totalSgd.toFixed(2)})
-            </button>
+            <button onClick={generatePDF} className="fixed bottom-10 left-6 right-6 bg-[#009640] text-white py-5 rounded-[2rem] font-black text-sm shadow-2xl z-50 uppercase tracking-widest">Download PDF (S$ {totalSgd.toFixed(2)})</button>
           )}
         </div>
       )}
-      
-      {/* ... (Keep your Cards and Gmail tab UI) */}
+
+      {activeTab === 'cards' && (
+        <div className="space-y-4">
+          <button onClick={() => cardCameraRef.current.click()} className="w-full border-4 border-dashed border-slate-200 aspect-video rounded-[2rem] bg-white flex flex-col items-center justify-center">
+            <span className="text-5xl mb-3">🪪</span>
+            <span className="font-black text-slate-700 uppercase text-[10px]">Scan Card</span>
+          </button>
+          <input type="file" accept="image/*" ref={cardCameraRef} className="hidden" onChange={processCard} />
+          {cards.map(card => (
+            <div key={card.id} className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm relative">
+              <button onClick={() => setCards(cards.filter(c => c.id !== card.id))} className="absolute top-5 right-6 text-slate-200">✕</button>
+              <input className="w-full font-black text-slate-900 text-lg mb-2 border-none p-0 focus:ring-0" value={card.name} onChange={(e) => setCards(cards.map(c => c.id === card.id ? {...c, name: e.target.value} : c))} />
+              <p className="text-[11px] text-slate-500">📞 {card.phone || "---"}</p>
+              <p className="text-[11px] text-slate-500 mb-6">📧 {card.email || "---"}</p>
+              <button onClick={() => {
+                const v = ["BEGIN:VCARD","VERSION:3.0",`FN:${card.name}`,`TEL;TYPE=CELL:${card.phone}`,`EMAIL:${card.email}`,"END:VCARD"].join("\n");
+                const b = new Blob([v], { type: 'text/vcard' });
+                const u = window.URL.createObjectURL(b);
+                const l = document.createElement('a'); l.href = u; l.setAttribute('download', `${card.name}.vcf`); l.click();
+              }} className="w-full bg-[#009640] text-white py-4 rounded-2xl font-black text-[10px] uppercase">Save Contact</button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {activeTab === 'gmail' && (
+        <div className="space-y-4">
+          <button onClick={handleGmailSearch} disabled={isSearching} className="w-full bg-[#009640] text-white py-5 rounded-[2rem] font-black text-[10px] uppercase shadow-lg">
+            {isSearching ? "Searching..." : "🔍 Search Gmail Receipts"}
+          </button>
+          {searchResults.map((res, i) => (
+            <div key={i} className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm">
+              <div className="text-[9px] text-blue-500 font-bold uppercase mb-1">{res.date}</div>
+              <div className="text-xs font-black text-slate-800 mb-4 line-clamp-2">{res.subject}</div>
+              <div className="flex justify-between items-center pt-4 border-t border-slate-50">
+                <div className="bg-slate-100 px-3 py-2 rounded-xl font-black text-xs text-slate-600">S$ {res.editAmount}</div>
+                <button onClick={() => { setRows(prev => [{ date: res.date, desc: res.subject, sgd: parseFloat(res.editAmount) || 0, image: null }, ...prev]); setActiveTab('voucher'); }} className="bg-[#009640] text-white px-6 py-2 rounded-xl text-[10px] font-black uppercase">Add</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
