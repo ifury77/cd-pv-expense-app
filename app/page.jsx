@@ -6,9 +6,8 @@ import autoTable from 'jspdf-autotable';
 import html2canvas from 'html2canvas';
 
 export default function Page() {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const cameraInputRef = useRef(null);
-  const emailRenderRef = useRef(null);
   const [rows, setRows] = useState([]);
   const [activeTab, setActiveTab] = useState('voucher');
   const [searchResults, setSearchResults] = useState([]);
@@ -73,7 +72,6 @@ export default function Page() {
       const data = await res.json();
       emailHtml = data.html;
     } catch (e) {}
-    
     setRows(prev => [...prev, {
       date: item.date || new Date().toLocaleDateString('en-GB'),
       desc: item.subject,
@@ -105,7 +103,6 @@ export default function Page() {
         foot: [[{ content: 'TOTAL CLAIM', colSpan: 4, styles: { halign: 'right', fontStyle: 'bold' } }, { content: `S$ ${totalSgd.toFixed(2)}`, styles: { fontStyle: 'bold' } }]]
       });
 
-      // ATTACHMENTS LOOP
       for (const [index, row] of rows.entries()) {
         doc.addPage('a4', 'portrait');
         doc.setFontSize(12); doc.setTextColor(100);
@@ -114,7 +111,6 @@ export default function Page() {
         if (row.image) {
           doc.addImage(row.image, 'JPEG', 15, 30, 180, 0);
         } else if (row.html) {
-          // Convert HTML to Image for PDF stability
           const container = document.createElement('div');
           container.style.width = '800px';
           container.style.position = 'absolute';
@@ -127,19 +123,34 @@ export default function Page() {
           document.body.removeChild(container);
         }
       }
-
       doc.save(`Voucher_Ivan_Ong.pdf`);
     } catch (e) { alert("PDF Error: " + e.message); }
     setIsGenerating(false);
   }
 
-  if (!session) return <div className="flex h-screen items-center justify-center p-6 bg-white"><button onClick={() => signIn('google')} className="w-full max-w-sm bg-[#009640] text-white py-4 rounded-2xl font-bold">Sign In</button></div>;
+  // --- LOGIN CHECK ---
+  if (status === "loading") return <div className="flex h-screen items-center justify-center bg-slate-50 font-bold text-slate-400 uppercase tracking-widest text-xs">Loading...</div>;
+  
+  if (!session) {
+    return (
+      <div className="flex flex-col h-screen items-center justify-center p-6 bg-white">
+        <h1 className="text-[#009640] font-black text-3xl mb-2 tracking-tight">REDINGTON</h1>
+        <p className="text-slate-400 font-bold text-xs uppercase tracking-[0.2em] mb-12">Voucher System</p>
+        <button onClick={() => signIn('google')} className="w-full max-w-sm bg-[#009640] text-white py-5 rounded-3xl font-black text-lg shadow-xl shadow-green-100 active:scale-95 transition-all">
+          Sign In with Google
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-full md:max-w-4xl mx-auto p-4 md:p-6 font-sans bg-slate-50 min-h-screen">
-      <div className="flex flex-col mb-6 pt-2">
-        <h1 className="text-[#009640] font-black text-xl leading-none">REDINGTON</h1>
-        <p className="text-slate-400 font-bold text-[10px] uppercase tracking-widest mt-1">Payment Voucher</p>
+      <div className="flex justify-between items-start mb-6 pt-2">
+        <div>
+          <h1 className="text-[#009640] font-black text-xl leading-none">REDINGTON</h1>
+          <p className="text-slate-400 font-bold text-[10px] uppercase tracking-widest mt-1">Payment Voucher</p>
+        </div>
+        <button onClick={() => signOut()} className="text-[9px] font-black text-slate-300 uppercase border border-slate-200 px-3 py-1 rounded-full">Sign Out</button>
       </div>
 
       <div className="flex gap-1 mb-6 bg-slate-200 p-1 rounded-xl w-full">
@@ -155,11 +166,7 @@ export default function Page() {
               <button onClick={() => setRows(rows.filter((_, idx) => idx !== i))} className="absolute top-4 right-4 text-slate-300">✕</button>
               <div className="text-[10px] text-slate-400 font-bold uppercase mb-1">{row.date}</div>
               <input className="w-full border-none p-0 font-bold text-slate-800 text-sm focus:ring-0" value={row.desc} onChange={e => updateRow(i, 'desc', e.target.value)} />
-              
-              {row.html && (
-                <button onClick={() => { const w = window.open(); w.document.write(row.html); }} className="text-blue-500 text-[10px] font-bold uppercase mt-2 block">View Email Source</button>
-              )}
-
+              {row.html && <button onClick={() => { const w = window.open(); w.document.write(row.html); }} className="text-blue-500 text-[10px] font-bold uppercase mt-2 block underline">View Email</button>}
               <div className="flex justify-between items-end mt-4">
                 <span className="text-[9px] font-bold text-green-600 uppercase italic">{(row.image || row.html) ? "✓ Attachment Linked" : "No Attachment"}</span>
                 <div className="flex items-center bg-green-50 px-3 py-1 rounded-lg">
@@ -169,7 +176,7 @@ export default function Page() {
               </div>
             </div>
           ))}
-          <button onClick={generatePDF} className="fixed bottom-6 left-4 right-4 bg-[#009640] text-white py-4 rounded-2xl font-black text-lg shadow-xl z-10">
+          <button onClick={generatePDF} className="fixed bottom-6 left-4 right-4 bg-[#009640] text-white py-4 rounded-2xl font-black text-lg shadow-xl z-10 active:scale-[0.98]">
             {isGenerating ? "Capturing Attachments..." : "Download PDF"}
           </button>
         </div>
@@ -182,6 +189,7 @@ export default function Page() {
             <span className="font-bold text-slate-700 uppercase tracking-wider text-sm">Upload Photo / Snip</span>
           </button>
           <input type="file" accept="image/*" ref={cameraInputRef} className="hidden" onChange={processImage} />
+          {isProcessing && <div className="text-center py-4 animate-pulse text-[#009640] font-bold text-xs uppercase tracking-widest">AI Scanning...</div>}
         </div>
       )}
 
@@ -197,7 +205,7 @@ export default function Page() {
               <div className="flex justify-between items-center pt-3 border-t">
                 <div className="bg-slate-50 px-3 py-1 rounded-lg">
                   <span className="text-[10px] font-bold text-slate-400 mr-2">S$</span>
-                  <input className="w-16 bg-transparent border-none p-0 font-bold text-slate-900 text-sm" value={res.editAmount} onChange={e => {
+                  <input className="w-16 bg-transparent border-none p-0 font-bold text-slate-900 text-sm focus:ring-0" value={res.editAmount} onChange={e => {
                     const updated = [...searchResults];
                     updated[i].editAmount = e.target.value;
                     setSearchResults(updated);
