@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 import { useState, useRef } from 'react';
 import { useSession, signIn, signOut } from 'next-auth/react';
 
@@ -50,7 +50,7 @@ export default function Page() {
   async function handleGmailSearch() {
     setIsSearching(true);
     try {
-      const res = await fetch(`/api/gmail/search?q=tada OR grab OR receipt`);
+      const res = await fetch(`/api/gmail/search?q=receipt OR "tax invoice" OR bill OR "payment advice" OR "e-receipt"`);
       const data = await res.json();
       setSearchResults((data.results || []).map(r => {
         const amtMatch = r.snippet?.match(/(?:SGD|S\$|Total|Charged|Fee)\s?S?\$?\s?([\d.,]+)/i);
@@ -89,7 +89,7 @@ export default function Page() {
       {activeTab === 'cards' && (
         <div className="space-y-4">
           <button onClick={() => cameraRef.current.click()} className="w-full border-4 border-dashed border-slate-200 aspect-video rounded-[2rem] bg-white flex flex-col items-center justify-center">
-            <span className="text-5xl mb-4">🪪</span>
+            <span className="text-5xl mb-4">??</span>
             <span className="font-black text-slate-700 uppercase text-[10px]">Scan Business Card</span>
           </button>
           <input type="file" accept="image/*" ref={cameraRef} className="hidden" onChange={processCard} />
@@ -98,8 +98,8 @@ export default function Page() {
             <div key={card.id} className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
               <input className="w-full font-black text-slate-900 text-lg mb-4 border-b border-slate-50" value={card.name} onChange={(e) => setCards(cards.map(c => c.id === card.id ? {...c, name: e.target.value} : c))} />
               <div className="text-xs text-slate-500 space-y-2 mb-6">
-                <p>📞 {card.phone || "---"}</p>
-                <p>📧 {card.email || "---"}</p>
+                <p>?? {card.phone || "---"}</p>
+                <p>?? {card.email || "---"}</p>
               </div>
               <button onClick={() => downloadVCF(card)} className="w-full bg-[#009640] text-white py-4 rounded-2xl font-black text-xs">ADD TO CONTACTS</button>
             </div>
