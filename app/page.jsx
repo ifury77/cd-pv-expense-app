@@ -38,18 +38,17 @@ export default function Page() {
         });
         const data = await res.json();
         
-        // OCR CLEANING LOGIC
-        // 1. Strip currency symbols and commas from the amount string
-        let cleanAmount = 0;
-        if (data.amount) {
-          const rawAmount = String(data.amount).replace(/[^\d.-]/g, '');
-          cleanAmount = parseFloat(rawAmount) || 0;
-        }
+        // --- IMPROVED EXTRACTION LOGIC ---
+        // Checks data.amount, data.total, or nested data.result.amount
+        const rawAmount = data.amount || data.total || data.result?.amount || "0";
+        const cleanAmount = parseFloat(String(rawAmount).replace(/[^\d.-]/g, '')) || 0;
+        
+        const rawDesc = data.desc || data.merchant || data.description || "Scanned Receipt";
 
         setRows(prev => [...prev, {
           date: data.date || new Date().toLocaleDateString('en-GB'),
-          desc: data.desc || "Scanned Receipt",
-          ref: "",
+          desc: rawDesc,
+          ref: data.ref || "",
           sgd: cleanAmount,
           image: base64Image,
           html: null
@@ -58,7 +57,7 @@ export default function Page() {
       } catch (err) { 
         setRows(prev => [...prev, {
           date: new Date().toLocaleDateString('en-GB'),
-          desc: "New Receipt (Manual Edit)",
+          desc: "Scan Failed - Manual Entry",
           ref: "",
           sgd: 0,
           image: base64Image,
@@ -147,14 +146,14 @@ export default function Page() {
     setIsGenerating(false);
   }
 
-  if (status === "loading") return <div className="flex h-screen items-center justify-center bg-slate-50 text-slate-400 font-bold uppercase tracking-widest text-[10px]">Loading...</div>;
+  if (status === "loading") return <div className="flex h-screen items-center justify-center bg-slate-50 text-slate-400 font-bold text-[10px]">Loading...</div>;
   
   if (!session) {
     return (
       <div className="flex flex-col h-screen items-center justify-center p-8 bg-white text-center">
         <h1 className="text-[#009640] font-black text-4xl tracking-tighter">REDINGTON</h1>
         <p className="text-slate-400 font-bold text-[10px] uppercase tracking-[0.3em] mb-12">Voucher Portal</p>
-        <button onClick={() => signIn('google')} className="w-full max-w-sm bg-[#009640] text-white py-5 rounded-3xl font-black text-lg shadow-xl shadow-green-100 active:scale-95 transition-all">
+        <button onClick={() => signIn('google')} className="w-full max-w-sm bg-[#009640] text-white py-5 rounded-3xl font-black text-lg shadow-xl shadow-green-100">
           Sign In with Google
         </button>
       </div>
@@ -168,7 +167,7 @@ export default function Page() {
           <h1 className="text-[#009640] font-black text-xl leading-none">REDINGTON</h1>
           <p className="text-slate-500 font-bold text-[9px] uppercase tracking-widest mt-1">Payment Voucher</p>
         </div>
-        <button onClick={() => signOut()} className="bg-white border border-slate-200 px-4 py-2 rounded-xl text-[10px] font-black text-slate-400 uppercase shadow-sm">Log Out</button>
+        <button onClick={() => signOut()} className="bg-white border border-slate-200 px-4 py-2 rounded-xl text-[10px] font-black text-slate-400 shadow-sm active:bg-slate-50">Log Out</button>
       </div>
 
       <div className="flex gap-1 mb-8 bg-slate-200 p-1 rounded-2xl w-full">
@@ -185,20 +184,20 @@ export default function Page() {
               <div className="text-[10px] text-slate-400 font-bold uppercase mb-1">{row.date}</div>
               
               <input 
-                className="w-full border-b border-transparent hover:border-slate-100 focus:border-[#009640] p-0 font-black text-slate-900 text-lg focus:ring-0 mb-1 transition-colors" 
+                className="w-full border-none p-0 font-black text-slate-900 text-base focus:ring-0 mb-1" 
                 value={row.desc} 
                 onChange={e => updateRow(i, 'desc', e.target.value)} 
                 placeholder="Description"
               />
               
-              {row.html && <button onClick={() => { const w = window.open(); w.document.write(row.html); }} className="text-blue-500 text-[10px] font-bold uppercase underline decoration-2 underline-offset-4">View Email</button>}
+              {row.html && <button onClick={() => { const w = window.open(); w.document.write(row.html); }} className="text-blue-500 text-[10px] font-bold uppercase underline underline-offset-4">View Email</button>}
               
               <div className="flex justify-between items-end mt-6">
-                <span className="text-[9px] font-black text-green-600 uppercase tracking-tighter italic">{(row.image || row.html) ? "● Attached" : "○ No File"}</span>
+                <span className="text-[9px] font-black text-green-600 uppercase italic">{(row.image || row.html) ? "● Attached" : "○ No File"}</span>
                 <div className="flex items-center bg-green-50 px-4 py-2 rounded-xl border border-green-100">
-                  <span className="text-[10px] font-black text-green-700 mr-3">SGD</span>
+                  <span className="text-[10px] font-black text-green-700 mr-2">SGD</span>
                   <input 
-                    className="w-24 bg-transparent border-none p-0 text-right font-black text-slate-900 text-xl focus:ring-0" 
+                    className="w-20 bg-transparent border-none p-0 text-right font-black text-slate-900 text-lg focus:ring-0" 
                     type="number" 
                     step="0.01" 
                     value={row.sgd} 
@@ -208,38 +207,38 @@ export default function Page() {
               </div>
             </div>
           ))}
-          {rows.length === 0 && <div className="text-center py-20 text-slate-300 text-sm font-bold uppercase tracking-widest">No entries found</div>}
+          {rows.length === 0 && <div className="text-center py-20 text-slate-300 text-sm font-bold uppercase tracking-widest">No entries</div>}
           
-          <button onClick={generatePDF} className="fixed bottom-8 left-6 right-6 bg-[#009640] text-white py-5 rounded-[2rem] font-black text-lg shadow-2xl shadow-green-200 z-50">
-            {isGenerating ? "Capturing Attachments..." : `Download PDF (S$ ${totalSgd.toFixed(2)})`}
+          <button onClick={generatePDF} className="fixed bottom-8 left-6 right-6 bg-[#009640] text-white py-5 rounded-[2rem] font-black text-lg shadow-2xl z-50">
+             Download PDF (S$ {totalSgd.toFixed(2)})
           </button>
         </div>
       )}
 
       {activeTab === 'add' && (
         <div className="flex flex-col gap-4">
-          <button onClick={() => cameraInputRef.current.click()} className="aspect-square w-full border-4 border-dashed border-slate-200 rounded-[3rem] bg-white flex flex-col items-center justify-center active:bg-slate-50 transition-all">
+          <button onClick={() => cameraInputRef.current.click()} className="aspect-square w-full border-4 border-dashed border-slate-200 rounded-[3rem] bg-white flex flex-col items-center justify-center">
             <span className="text-6xl mb-6">📸</span>
             <span className="font-black text-slate-700 uppercase tracking-widest text-xs">Snap Receipt</span>
           </button>
           <input type="file" accept="image/*" ref={cameraInputRef} className="hidden" onChange={processImage} />
-          {isProcessing && <div className="text-center py-8 animate-pulse text-[#009640] font-black text-[10px] uppercase tracking-[0.3em]">AI OCR Engine Working...</div>}
+          {isProcessing && <div className="text-center py-8 animate-pulse text-[#009640] font-black text-[10px] uppercase">Reading Receipt...</div>}
         </div>
       )}
 
       {activeTab === 'search' && (
         <div className="space-y-4">
-          <button onClick={handleSearch} disabled={isSearching} className="w-full bg-slate-900 text-white py-5 rounded-3xl font-black shadow-lg">
-            {isSearching ? "Searching Gmail..." : "🔍 Search Recent Receipts"}
+          <button onClick={handleSearch} disabled={isSearching} className="w-full bg-slate-900 text-white py-5 rounded-3xl font-black">
+            {isSearching ? "Searching..." : "🔍 Search Gmail"}
           </button>
           {searchResults.map((res, i) => (
-            <div key={i} className="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm">
+            <div key={i} className="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm mb-3">
               <div className="text-[10px] text-blue-500 font-bold mb-1 uppercase">{res.date}</div>
               <div className="text-sm font-black text-slate-800 mb-4 line-clamp-2 leading-tight">{res.subject}</div>
-              <div className="flex justify-between items-center pt-4 border-t border-slate-50">
+              <div className="flex justify-between items-center pt-4 border-t">
                 <div className="bg-slate-100 px-4 py-2 rounded-xl">
                   <span className="text-[10px] font-black text-slate-400 mr-2">S$</span>
-                  <input className="w-16 bg-transparent border-none p-0 font-black text-slate-900 text-base focus:ring-0" value={res.editAmount} onChange={e => {
+                  <input className="w-16 bg-transparent border-none p-0 font-black text-slate-900 text-base" value={res.editAmount} onChange={e => {
                     const updated = [...searchResults];
                     updated[i].editAmount = e.target.value;
                     setSearchResults(updated);
