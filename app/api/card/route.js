@@ -15,17 +15,20 @@ export async function POST(req) {
     const text = result.fullTextAnnotation?.text || "";
     const lines = text.split('\n').filter(l => l.trim().length > 0);
 
-    // Extraction Logic
-    const emailMatch = text.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
-    const phoneMatch = text.match(/[\+]?[(]?[0-9]{3}[)]?[-\s\.]?[0-9]{3}[-\s\.]?[0-9]{4,6}/);
+    // More aggressive Email regex
+    const emailMatch = text.match(/[a-zA-Z0-9+_.-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
     
-    // Assume first line is the name, or second if first is a company
-    const name = lines[0] ? lines[0].trim() : "New Contact";
+    // More aggressive Phone regex (handles spaces, dots, and plus signs)
+    const phoneMatch = text.match(/(\+?[\d\s\.\-\(\)]{8,})/);
+    
+    // Cleanup phone: if it's just a long string of numbers/chars, keep it
+    let phone = phoneMatch ? phoneMatch[0].trim() : "";
+    if (phone.length < 8) phone = ""; // Ignore short strings that aren't phones
 
     return NextResponse.json({
-      name: name,
+      name: lines[0] ? lines[0].trim() : "New Contact",
       email: emailMatch ? emailMatch[0] : "",
-      phone: phoneMatch ? phoneMatch[0] : "",
+      phone: phone,
       raw: text
     });
   } catch (error) {
