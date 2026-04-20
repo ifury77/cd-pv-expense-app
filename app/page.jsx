@@ -1,29 +1,15 @@
 ﻿'use client';
 import { useState, useRef } from 'react';
 import { useSession, signIn, signOut } from 'next-auth/react';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
-import html2canvas from 'html2canvas';
 
 export default function Page() {
   const { data: session, status } = useSession();
-  const cameraInputRef = useRef(null);
-  const [rows, setRows] = useState([]);
   const [activeTab, setActiveTab] = useState('voucher');
-  const [searchResults, setSearchResults] = useState([]);
-  const [isSearching, setIsSearching] = useState(false);
-  const [isGenerating, setIsGenerating] = useState(false);
+  const [cards, setCards] = useState([]);
   const [isProcessing, setIsProcessing] = useState(false);
+  const cameraRef = useRef(null);
 
-  const totalSgd = rows.reduce((sum, row) => sum + (parseFloat(row.sgd) || 0), 0);
-
-  const updateRow = (index, field, value) => {
-    const updated = [...rows];
-    updated[index][field] = value;
-    setRows(updated);
-  };
-
-  const processImage = async (e) => {
+  const processCard = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
     setIsProcessing(true);
@@ -31,181 +17,78 @@ export default function Page() {
     reader.onloadend = async () => {
       const base64Image = reader.result;
       try {
-        const res = await fetch('/api/ocr', {
+        const res = await fetch('/api/card', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ image: base64Image })
         });
-        
-        if (!res.ok) throw new Error(`Server Error: ${res.status}`);
-        
         const data = await res.json();
-        
-        setRows(prev => [...prev, {
-          date: data.date || new Date().toLocaleDateString('en-GB'),
-          desc: data.desc || "Scanned Receipt",
-          ref: "",
-          sgd: parseFloat(data.amount) || 0,
-          image: base64Image,
-          html: null,
-          debug: data.error ? "API Error" : null
-        }]);
-        setActiveTab('voucher');
-      } catch (err) { 
-        alert("Scan failed: " + err.message);
-        setRows(prev => [...prev, {
-          date: new Date().toLocaleDateString('en-GB'),
-          desc: "Manual Entry (Scan Failed)",
-          ref: "",
-          sgd: 0,
-          image: base64Image,
-          html: null
-        }]);
-        setActiveTab('voucher');
-      }
+        setCards(prev => [{ ...data, id: Date.now() }, ...prev]);
+        setActiveTab('cards');
+      } catch (err) { alert("Card scan failed."); }
       setIsProcessing(false);
     };
     reader.readAsDataURL(file);
   };
 
-  // ... (Keep existing handleSearch, addFromGmail, generatePDF logic)
-  async function handleSearch() {
-    setIsSearching(true);
-    try {
-      const res = await fetch(`/api/gmail/search?q=tada OR grab OR receipt`);
-      const data = await res.json();
-      setSearchResults((data.results || []).map(r => {
-        const amtMatch = r.snippet?.match(/(?:SGD|S\$|Total|Charged|Fee)\s?S?\$?\s?([\d.,]+)/i);
-        return { ...r, editAmount: amtMatch ? amtMatch[1].replace(/,/g, '') : "0.00" };
-      }));
-    } catch (e) {}
-    setIsSearching(false);
-  }
+  const downloadVCF = (card) => {
+    const vcard = `BEGIN:VCARD
+VERSION:3.0
+FN:${card.name}
+TEL;TYPE=CELL:${card.phone}
+EMAIL:${card.email}
+END:VCARD`;
+    
+    const blob = new Blob([vcard], { type: 'text/vcard' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `${card.name.replace(/\s+/g, '_')}.vcf`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
-  const addFromGmail = async (item) => {
-    let emailHtml = "";
-    try {
-      const res = await fetch(`/api/gmail/message?id=${item.id}`);
-      const data = await res.json();
-      emailHtml = data.html;
-    } catch (e) {}
-    setRows(prev => [...prev, {
-      date: item.date || new Date().toLocaleDateString('en-GB'),
-      desc: item.subject,
-      ref: item.snippet?.match(/[A-Z0-9]{8,}/)?.[0] || "",
-      sgd: parseFloat(item.editAmount) || 0,
-      image: null,
-      html: emailHtml
-    }]);
-    setActiveTab('voucher');
-  }
-
-  async function generatePDF() {
-    setIsGenerating(true);
-    try {
-      const doc = new jsPDF('landscape');
-      doc.setFontSize(18); doc.setTextColor(0, 150, 64);
-      doc.text('REDINGTON', 14, 18);
-      doc.setFontSize(10); doc.setTextColor(0);
-      doc.text('PAYMENT VOUCHER', 14, 30);
-      doc.text(`PAY TO: Ivan Ong`, 14, 36);
-      doc.text(`DATE: ${new Date().toLocaleDateString('en-GB')}`, 250, 30);
-
-      autoTable(doc, {
-        startY: 45,
-        head: [['No.', 'Date', 'Description', 'Reference', 'Amount (SGD)']],
-        body: rows.map((row, i) => [i + 1, row.date, row.desc, row.ref, `S$ ${parseFloat(row.sgd).toFixed(2)}`]),
-        theme: 'grid',
-        headStyles: { fillColor: [240, 240, 240], textColor: 0, fontStyle: 'bold' },
-        foot: [[{ content: 'TOTAL CLAIM', colSpan: 4, styles: { halign: 'right', fontStyle: 'bold' } }, { content: `S$ ${totalSgd.toFixed(2)}`, styles: { fontStyle: 'bold' } }]]
-      });
-
-      for (const [index, row] of rows.entries()) {
-        doc.addPage('a4', 'portrait');
-        doc.setFontSize(12); doc.setTextColor(100);
-        doc.text(`Attachment ${index + 1}: ${row.desc}`, 15, 20);
-
-        if (row.image) {
-          doc.addImage(row.image, 'JPEG', 15, 30, 180, 0);
-        } else if (row.html) {
-          const container = document.createElement('div');
-          container.style.width = '800px';
-          container.style.position = 'absolute';
-          container.style.left = '-9999px';
-          container.innerHTML = row.html;
-          document.body.appendChild(container);
-          const canvas = await html2canvas(container, { useCORS: true, scale: 1 });
-          const imgData = canvas.toDataURL('image/jpeg', 0.8);
-          doc.addImage(imgData, 'JPEG', 15, 30, 180, 0);
-          document.body.removeChild(container);
-        }
-      }
-      doc.save(`Voucher_Ivan_Ong.pdf`);
-    } catch (e) { alert("PDF Error: " + e.message); }
-    setIsGenerating(false);
-  }
-
-  if (status === "loading") return <div className="flex h-screen items-center justify-center bg-slate-50 text-slate-400 font-bold text-[10px]">Loading...</div>;
-  
-  if (!session) {
-    return (
-      <div className="flex flex-col h-screen items-center justify-center p-8 bg-white text-center">
-        <h1 className="text-[#009640] font-black text-4xl tracking-tighter">REDINGTON</h1>
-        <button onClick={() => signIn('google')} className="w-full max-w-sm bg-[#009640] text-white py-5 rounded-3xl font-black text-lg">Sign In</button>
-      </div>
-    );
-  }
+  if (!session) return <div className="p-20 text-center"><button onClick={() => signIn('google')} className="bg-[#009640] text-white px-8 py-4 rounded-3xl font-black">Login to Redington</button></div>;
 
   return (
-    <div className="max-w-full md:max-w-4xl mx-auto p-4 md:p-6 font-sans bg-slate-50 min-h-screen pb-32">
-      <div className="flex justify-between items-center mb-8 pt-4">
-        <div>
-          <h1 className="text-[#009640] font-black text-xl leading-none">REDINGTON</h1>
-          <p className="text-slate-500 font-bold text-[9px] uppercase tracking-widest mt-1">Payment Voucher</p>
-        </div>
-        <button onClick={() => signOut()} className="bg-white border border-slate-200 px-4 py-2 rounded-xl text-[10px] font-black text-slate-400">Log Out</button>
+    <div className="max-w-md mx-auto p-4 font-sans min-h-screen bg-slate-50">
+      <div className="flex justify-between mb-6">
+        <h1 className="text-[#009640] font-black text-xl">REDINGTON</h1>
+        <button onClick={() => signOut()} className="text-[10px] font-bold text-slate-400">LOGOUT</button>
       </div>
 
-      <div className="flex gap-1 mb-8 bg-slate-200 p-1 rounded-2xl w-full">
-        <button onClick={() => setActiveTab('voucher')} className={`flex-1 py-3.5 rounded-xl text-[11px] font-black ${activeTab === 'voucher' ? 'bg-white text-[#009640]' : 'text-slate-500'}`}>My Claims</button>
-        <button onClick={() => setActiveTab('add')} className={`flex-1 py-3.5 rounded-xl text-[11px] font-black ${activeTab === 'add' ? 'bg-white text-[#009640]' : 'text-slate-500'}`}>+ Photo</button>
-        <button onClick={() => setActiveTab('search')} className={`flex-1 py-3.5 rounded-xl text-[11px] font-black ${activeTab === 'search' ? 'bg-white text-[#009640]' : 'text-slate-500'}`}>Gmail</button>
+      <div className="flex gap-1 mb-6 bg-slate-200 p-1 rounded-xl">
+        <button onClick={() => setActiveTab('voucher')} className={`flex-1 py-2 rounded-lg text-[11px] font-bold ${activeTab === 'voucher' ? 'bg-white text-[#009640]' : 'text-slate-500'}`}>Voucher</button>
+        <button onClick={() => setActiveTab('cards')} className={`flex-1 py-2 rounded-lg text-[11px] font-bold ${activeTab === 'cards' ? 'bg-white text-[#009640]' : 'text-slate-500'}`}>Contacts</button>
       </div>
 
-      {activeTab === 'voucher' && (
+      {activeTab === 'cards' && (
         <div className="space-y-4">
-          {rows.map((row, i) => (
-            <div key={i} className="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm relative">
-              <button onClick={() => setRows(rows.filter((_, idx) => idx !== i))} className="absolute top-5 right-5 text-slate-300">✕</button>
-              <div className="text-[10px] text-slate-400 font-bold uppercase mb-1">{row.date} {row.debug && <span className="text-red-500 ml-2">({row.debug})</span>}</div>
-              <input className="w-full border-none p-0 font-black text-slate-900 text-base focus:ring-0 mb-1" value={row.desc} onChange={e => updateRow(i, 'desc', e.target.value)} />
-              <div className="flex justify-between items-end mt-6">
-                <span className="text-[9px] font-black text-green-600 uppercase italic">{(row.image || row.html) ? "● Attached" : "○ No File"}</span>
-                <div className="flex items-center bg-green-50 px-4 py-2 rounded-xl border border-green-100">
-                  <span className="text-[10px] font-black text-green-700 mr-2">SGD</span>
-                  <input className="w-20 bg-transparent border-none p-0 text-right font-black text-slate-900 text-lg focus:ring-0" type="number" step="0.01" value={row.sgd} onChange={e => updateRow(i, 'sgd', e.target.value)} />
-                </div>
+          <button onClick={() => cameraRef.current.click()} className="w-full border-2 border-dashed border-slate-300 py-8 rounded-2xl bg-white font-bold text-slate-500">
+            {isProcessing ? "Reading Card..." : "📸 Scan Business Card"}
+          </button>
+          <input type="file" accept="image/*" ref={cameraRef} className="hidden" onChange={processCard} />
+
+          {cards.map(card => (
+            <div key={card.id} className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
+              <input className="text-lg font-black text-slate-800 w-full mb-1" value={card.name} onChange={(e) => {
+                const updated = cards.map(c => c.id === card.id ? {...c, name: e.target.value} : c);
+                setCards(updated);
+              }} />
+              <div className="text-sm text-slate-500 mb-4">
+                <p>📞 {card.phone || "No Phone Found"}</p>
+                <p>📧 {card.email || "No Email Found"}</p>
               </div>
+              <button onClick={() => downloadVCF(card)} className="w-full bg-blue-600 text-white py-3 rounded-xl font-bold text-sm">
+                Save to Contacts (.vcf)
+              </button>
             </div>
           ))}
-          <button onClick={generatePDF} className="fixed bottom-8 left-6 right-6 bg-[#009640] text-white py-5 rounded-[2rem] font-black text-lg shadow-2xl z-50">
-             Download PDF (S$ {totalSgd.toFixed(2)})
-          </button>
-        </div>
-      )}
-
-      {activeTab === 'add' && (
-        <div className="flex flex-col gap-4">
-          <button onClick={() => cameraInputRef.current.click()} className="aspect-square w-full border-4 border-dashed border-slate-200 rounded-[3rem] bg-white flex flex-col items-center justify-center">
-            <span className="text-6xl mb-6">📸</span>
-            <span className="font-black text-slate-700 uppercase tracking-widest text-xs">Snap Receipt</span>
-          </button>
-          <input type="file" accept="image/*" ref={cameraInputRef} className="hidden" onChange={processImage} />
-          {isProcessing && <div className="text-center py-8 animate-pulse text-[#009640] font-black text-[10px] uppercase">Processing...</div>}
         </div>
       )}
       
-      {/* ... (Keep Gmail search tab content) */}
+      {/* (You can still keep your Voucher logic here below if needed) */}
     </div>
   );
 }
