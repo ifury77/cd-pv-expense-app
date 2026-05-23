@@ -354,13 +354,13 @@ async function extractReceipt() {
     if (currentMime === 'application/pdf') {
       contentArr = [
         { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: currentBase64 } },
-        { type: 'text', text: 'Extract expense details. Return ONLY raw JSON: {description, date (DD MMM YYYY), amount (number only), currency (SGD/IDR/THB/MYR/PHP/VND/USD), reference}' }
+        { type: 'text', text: 'Extract expense details as a SINGLE line item. If multiple nights/days, sum into one total. Return ONLY a raw JSON object (not array): {description, date (first date, DD MMM YYYY), amount (total, numeric only), currency (SGD/IDR/THB/MYR/PHP/VND/USD), reference (booking ID or empty)}. No markdown, single JSON object only.' }
       ];
     } else {
       const mime = currentMime.startsWith('image/') ? currentMime : 'image/jpeg';
       contentArr = [
         { type: 'image', source: { type: 'base64', media_type: mime, data: currentBase64 } },
-        { type: 'text', text: 'Extract expense details from this receipt. Return ONLY raw JSON with fields: description (brief, e.g. "Grab Car - Hotel to Airport", "Dinner at Restaurant Name", "Hotel accommodation"), date (DD MMM YYYY), amount (number only, no symbols), currency (SGD/IDR/THB/MYR/PHP/VND/USD), reference (booking ID or empty string). No markdown, just JSON.' }
+        { type: 'text', text: 'Extract expense details from this receipt as a SINGLE line item. If there are multiple nights or days, combine them into ONE total. Return ONLY a raw JSON object (not array) with these fields: description (e.g. "Hotel accommodation at Mercure Bangkok Sukhumvit 24" or "Grab Car - Hotel to Airport"), date (use first date in DD MMM YYYY format), amount (total numeric amount, sum all nights/days if multiple), currency (SGD/IDR/THB/MYR/PHP/VND/USD), reference (booking/receipt ID or empty string). No markdown, no array, just a single JSON object {}.' }
       ];
     }
 
@@ -408,7 +408,11 @@ async function extractReceipt() {
       // Multiple items (e.g. multi-night hotel) — add all at once
       const rate = rates;
       let addedCount = 0;
-      const thumbSnap = pendingThumb || currentThumb || null;
+      // Get thumb from all possible sources
+      const tsEl = document.getElementById('thumb-store');
+      const domSrc = tsEl && tsEl.getAttribute('data-ready')==='1' && tsEl.src && tsEl.src.startsWith('data:') ? tsEl.src : null;
+      const thumbSnap = domSrc || pendingThumb || currentThumb || null;
+      console.log('Multi-item thumb: domSrc=',!!domSrc,'pendingThumb=',!!pendingThumb,'final=',!!thumbSnap);
       jsonItems.forEach((j, idx) => {
         const cur = ((j.currency || 'SGD') + '').toUpperCase();
         const currency = validCur.includes(cur) ? cur : 'SGD';
