@@ -116,12 +116,12 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
       <h2>Upload Receipt</h2>
     </div>
     <div class="card-body">
-      <div class="upload-zone" onclick="document.getElementById('receipt-input').click()">
-        <input type="file" id="receipt-input" accept="image/*,application/pdf" onchange="handleReceipt(this)">
+      <label class="upload-zone" for="receipt-input" style="display:block;cursor:pointer;">
+        <input type="file" id="receipt-input" accept="image/*,application/pdf" onchange="handleReceipt(this)" style="display:none;">
         <div class="upload-icon">📸</div>
         <p>Tap to upload receipt photo or PDF</p>
         <span>JPG, PNG, PDF supported</span>
-      </div>
+      </label>
       <img id="preview-img" alt="Receipt preview">
       <div class="thumb-status" id="thumb-status">✓ Image ready to attach</div>
       <div class="btn-row" id="extract-row" style="display:none;">
@@ -219,10 +219,11 @@ const WORKER_URL = 'https://bizcard-scanner.sgp69k.workers.dev';
 
 // State
 let rates = {};
-let currentBase64 = null;      // full res for AI extraction
+let currentBase64 = null;
 let currentMime = 'image/jpeg';
-let currentThumb = null;       // compressed JPEG dataURL for PDF
-let thumbReady = false;        // flag: compression complete
+let currentThumb = null;
+let thumbReady = false;
+let pendingThumb = null;  // NEVER cleared until addItem() completes
 
 // Items: stored in memory with thumbs; localStorage has text only
 let items = JSON.parse(localStorage.getItem('pv_items') || '[]');
@@ -311,6 +312,7 @@ function handleReceipt(input) {
       } catch(err) {
         // Fallback: use original dataUrl
         currentThumb = dataUrl;
+        pendingThumb = currentThumb;
         thumbReady = true;
         console.warn('Compression failed, using original');
       }
@@ -331,6 +333,7 @@ function clearReceipt() {
   currentBase64 = null;
   currentThumb = null;
   thumbReady = false;
+  // NOTE: pendingThumb is NOT cleared here — addItem() needs it
   document.getElementById('receipt-input').value = '';
   document.getElementById('preview-img').style.display = 'none';
   document.getElementById('thumb-status').style.display = 'none';
@@ -407,9 +410,9 @@ function addItem() {
 
   const sgd = amount * (rates[currency] || 1);
 
-  // Capture thumb at this exact moment
-  const thumbSnapshot = thumbReady ? currentThumb : null;
-  console.log('addItem: thumbReady=', thumbReady, 'currentThumb=', !!currentThumb, 'thumbSnapshot=', !!thumbSnapshot, thumbSnapshot ? thumbSnapshot.substring(0,30) : 'NULL');
+  // Use pendingThumb - survives clearReceipt() calls
+  const thumbSnapshot = pendingThumb || null;
+  console.log('addItem: pendingThumb=', !!pendingThumb, 'len=', pendingThumb ? pendingThumb.length : 0);
 
   const item = {
     id: Date.now(),
@@ -419,13 +422,9 @@ function addItem() {
   };
 
   console.log('addItem: item.thumb=', !!item.thumb, item.thumb ? item.thumb.length : 0);
-  // Show alert so we can debug on any device
-  const dbg = 'thumbReady:'+thumbReady+' currentThumb:'+(!!currentThumb)+' snap:'+(!!thumbSnapshot)+' len:'+(thumbSnapshot?thumbSnapshot.length:0);
-  document.getElementById('item-status').textContent = 'Debug: '+dbg;
-  document.getElementById('item-status').className = 'status info';
-  document.getElementById('item-status').style.display = 'block';
 
   items.push(item);
+  pendingThumb = null;  // clear after capturing into item
   saveItems();
   renderItems();
 
@@ -435,7 +434,7 @@ function addItem() {
   document.getElementById('sgd-preview').textContent = 'S$ —';
   document.getElementById('item-form-card').style.display = 'none';
   clearReceipt();
-  // keep item-status visible for debug
+  hideStatus('item-status');
   hideStatus('extract-status');
 }
 
