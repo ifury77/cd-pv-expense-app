@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="PV Expense">
+<title>PV Expense App – Redington ASEAN</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f0f4f0; min-height: 100vh; }
+.header { background: #1a5c1a; color: white; padding: 1rem 1.25rem; display: flex; align-items: center; gap: 12px; position: sticky; top: 0; z-index: 100; }
+.header-icon { width: 36px; height: 36px; background: rgba(255,255,255,0.2); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 20px; }
+.header h1 { font-size: 16px; font-weight: 600; }
+.header p { font-size: 12px; opacity: 0.8; }
+.pv-badge { margin-left: auto; background: rgba(255,255,255,0.2); border-radius: 20px; padding: 4px 12px; font-size: 13px; font-weight: 600; }
+.container { max-width: 640px; margin: 0 auto; padding: 1rem; }
+.card { background: white; border-radius: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); margin-bottom: 1rem; overflow: hidden; }
+.card-header { padding: 0.875rem 1rem; border-bottom: 1px solid #f0f0ee; display: flex; align-items: center; gap: 8px; }
+.card-header h2 { font-size: 14px; font-weight: 600; color: #1a5c1a; }
+.step-num { width: 22px; height: 22px; background: #1a5c1a; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; }
+.card-body { padding: 1rem; }
+.upload-zone { border: 2px dashed #c8d8c8; border-radius: 10px; padding: 1.5rem 1rem; text-align: center; cursor: pointer; transition: all 0.15s; background: #f8fdf8; }
+.upload-zone:hover { border-color: #1a5c1a; background: #f0f8f0; }
+.upload-zone input { display: none; }
+.upload-zone .icon { font-size: 32px; margin-bottom: 8px; }
+.upload-zone p { font-size: 14px; color: #444; }
+.upload-zone span { font-size: 12px; color: #888; }
+#preview-img { max-width: 100%; max-height: 180px; border-radius: 8px; margin-top: 0.75rem; display: none; object-fit: contain; }
+.field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.field-wrap { display: flex; flex-direction: column; gap: 4px; }
+.field-wrap.full { grid-column: 1 / -1; }
+.field-wrap label { font-size: 12px; color: #666; font-weight: 500; }
+.field-wrap input, .field-wrap select { font-size: 14px; padding: 8px 10px; border: 1px solid #ddd; border-radius: 6px; color: #202124; font-family: inherit; width: 100%; background: white; }
+.field-wrap input:focus, .field-wrap select:focus { outline: none; border-color: #1a5c1a; box-shadow: 0 0 0 3px rgba(26,92,26,0.12); }
+.rate-display { font-size: 11px; color: #1a5c1a; margin-top: 2px; font-style: italic; }
+.sgd-preview { background: #f0f8f0; border: 1px solid #c8d8c8; border-radius: 6px; padding: 8px 10px; font-size: 15px; font-weight: 600; color: #1a5c1a; min-height: 38px; display: flex; align-items: center; }
+.btn-row { display: flex; gap: 8px; margin-top: 0.875rem; flex-wrap: wrap; }
+.btn { padding: 9px 16px; border-radius: 8px; border: 1px solid #ddd; background: white; color: #333; font-size: 14px; cursor: pointer; display: flex; align-items: center; gap: 6px; font-family: inherit; transition: all 0.15s; white-space: nowrap; }
+.btn:hover { background: #f5f5f5; }
+.btn:active { transform: scale(0.98); }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+.btn.primary { background: #1a5c1a; border-color: #1a5c1a; color: white; font-weight: 500; }
+.btn.primary:hover { background: #144f14; }
+.btn.danger { background: #fce8e6; border-color: #f5c6c3; color: #c62828; }
+.btn.success { background: #e6f4ea; border-color: #a8d5b0; color: #1e7e34; font-weight: 500; }
+.status { font-size: 13px; padding: 9px 12px; border-radius: 8px; margin-top: 0.75rem; display: none; }
+.status.info { background: #e8f5e9; color: #1a5c1a; display: block; }
+.status.error { background: #fce8e6; color: #c62828; display: block; }
+.status.success { background: #e6f4ea; color: #1e7e34; display: block; }
+.spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid currentColor; border-top-color: transparent; border-radius: 50%; animation: spin 0.7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+/* Line items list */
+.items-list { padding: 0; }
+.item-row { padding: 0.875rem 1rem; border-bottom: 1px solid #f0f0ee; display: flex; align-items: flex-start; gap: 10px; }
+.item-row:last-child { border-bottom: none; }
+.item-num { width: 24px; height: 24px; background: #e8f5e9; color: #1a5c1a; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; margin-top: 2px; }
+.item-detail { flex: 1; min-width: 0; }
+.item-desc { font-size: 13px; font-weight: 500; color: #202124; word-break: break-word; }
+.item-meta { font-size: 12px; color: #888; margin-top: 2px; }
+.item-amounts { text-align: right; flex-shrink: 0; }
+.item-orig { font-size: 12px; color: #888; }
+.item-sgd { font-size: 14px; font-weight: 600; color: #1a5c1a; }
+.item-del { background: none; border: none; color: #ccc; cursor: pointer; font-size: 18px; padding: 0 4px; flex-shrink: 0; }
+.item-del:hover { color: #c62828; }
+.total-row { padding: 0.875rem 1rem; background: #f0f8f0; display: flex; justify-content: space-between; align-items: center; border-top: 2px solid #c8d8c8; }
+.total-label { font-size: 14px; font-weight: 600; color: #1a5c1a; }
+.total-amount { font-size: 20px; font-weight: 700; color: #1a5c1a; }
+.empty-state { padding: 2rem 1rem; text-align: center; color: #aaa; font-size: 14px; }
+.voucher-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 1rem; }
+.meta-item { }
+.meta-label { font-size: 11px; color: #888; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; }
+.meta-value { font-size: 15px; font-weight: 600; color: #202124; margin-top: 2px; }
+.receipt-thumb { width: 32px; height: 32px; border-radius: 4px; object-fit: cover; flex-shrink: 0; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-icon">📋</div>
+  <div>
+    <h1>PV Expense App</h1>
+    <p>Redington ASEAN · Ivan Ong</p>
+  </div>
+  <div class="pv-badge" id="pv-badge">PV5</div>
+</div>
+
+<div class="container">
+
+  <!-- Voucher Info -->
+  <div class="card">
+    <div class="card-header">
+      <div class="step-num">ℹ</div>
+      <h2>Voucher Details</h2>
+    </div>
+    <div class="voucher-meta">
+      <div class="meta-item">
+        <div class="meta-label">Voucher No.</div>
+        <div class="meta-value" id="display-pvnum">PV5</div>
+      </div>
+      <div class="meta-item">
+        <div class="meta-label">Month</div>
+        <div class="meta-value" id="display-month">May 2026</div>
+      </div>
+      <div class="meta-item">
+        <div class="meta-label">Pay To</div>
+        <div class="meta-value">Ivan Ong</div>
+      </div>
+      <div class="meta-item">
+        <div class="meta-label">Company</div>
+        <div class="meta-value">Redington ASEAN</div>
+      </div>
+    </div>
+    <div style="padding: 0 1rem 1rem; display: flex; gap: 10px;">
+      <div class="field-wrap" style="flex:1">
+        <label>Voucher No.</label>
+        <input type="text" id="pv-num" value="PV5" oninput="updatePVMeta()">
+      </div>
+      <div class="field-wrap" style="flex:2">
+        <label>Month / Period</label>
+        <input type="text" id="pv-month" value="May 2026" oninput="updatePVMeta()">
+      </div>
+    </div>
+  </div>
+
+  <!-- Upload Receipt -->
+  <div class="card">
+    <div class="card-header">
+      <div class="step-num">1</div>
+      <h2>Upload Receipt</h2>
+    </div>
+    <div class="card-body">
+      <div class="upload-zone" onclick="document.getElementById('receipt-input').click()">
+        <input type="file" id="receipt-input" accept="image/*,application/pdf" onchange="handleReceipt(this)">
+        <div class="icon">📸</div>
+        <p>Tap to upload receipt photo or PDF</p>
+        <span>JPG, PNG, PDF supported</span>
+      </div>
+      <img id="preview-img" alt="Receipt preview">
+      <div class="btn-row" id="extract-row" style="display:none;">
+        <button class="btn primary" id="extract-btn" onclick="extractReceipt()">✨ Extract details</button>
+        <button class="btn" onclick="clearReceipt()">✕ Clear</button>
+      </div>
+      <div class="status" id="extract-status"></div>
+    </div>
+  </div>
+
+  <!-- Line Item Form -->
+  <div class="card" id="item-form-card" style="display:none;">
+    <div class="card-header">
+      <div class="step-num">2</div>
+      <h2>Review & Edit Line Item</h2>
+    </div>
+    <div class="card-body">
+      <div class="field-grid">
+        <div class="field-wrap full">
+          <label>Description</label>
+          <input type="text" id="f-desc" placeholder="e.g. Grab Car – Hotel → Airport">
+        </div>
+        <div class="field-wrap">
+          <label>Date</label>
+          <input type="text" id="f-date" placeholder="e.g. 15 May 2026">
+        </div>
+        <div class="field-wrap">
+          <label>Currency</label>
+          <select id="f-currency" onchange="updateSGD()">
+            <option value="SGD">SGD</option>
+            <option value="IDR">IDR</option>
+            <option value="THB">THB</option>
+            <option value="MYR">MYR</option>
+            <option value="PHP">PHP</option>
+            <option value="VND">VND</option>
+            <option value="USD">USD</option>
+          </select>
+        </div>
+        <div class="field-wrap">
+          <label>Original Amount</label>
+          <input type="number" id="f-amount" placeholder="0.00" oninput="updateSGD()" step="0.01">
+        </div>
+        <div class="field-wrap">
+          <label>SGD Amount</label>
+          <div class="sgd-preview" id="sgd-preview">S$ —</div>
+          <div class="rate-display" id="rate-display"></div>
+        </div>
+        <div class="field-wrap">
+          <label>Reference / Booking ID</label>
+          <input type="text" id="f-ref" placeholder="Optional">
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn primary" onclick="addItem()">➕ Add to Voucher</button>
+        <button class="btn" onclick="cancelItem()">Cancel</button>
+      </div>
+      <div class="status" id="item-status"></div>
+    </div>
+  </div>
+
+  <!-- Line Items -->
+  <div class="card">
+    <div class="card-header">
+      <div class="step-num">3</div>
+      <h2>Voucher Line Items</h2>
+      <span id="item-count" style="margin-left:auto;font-size:12px;color:#888;">0 items</span>
+    </div>
+    <div id="items-list" class="items-list">
+      <div class="empty-state">No items yet — upload a receipt to start</div>
+    </div>
+    <div class="total-row" id="total-row" style="display:none;">
+      <div class="total-label">TOTAL (SGD)</div>
+      <div class="total-amount" id="total-amount">S$0.00</div>
+    </div>
+  </div>
+
+  <!-- Generate PDF -->
+  <div class="card">
+    <div class="card-header">
+      <div class="step-num">4</div>
+      <h2>Generate Payment Voucher PDF</h2>
+    </div>
+    <div class="card-body">
+      <p style="font-size:13px;color:#666;margin-bottom:0.75rem;">Generates a formatted PDF with all line items, totals, and signature fields.</p>
+      <div class="btn-row">
+        <button class="btn success" id="pdf-btn" onclick="generatePDF()">📄 Download PDF Voucher</button>
+        <button class="btn danger" onclick="clearAll()">🗑 Clear All</button>
+      </div>
+      <div class="status" id="pdf-status"></div>
+    </div>
+  </div>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+const WORKER_URL = 'https://bizcard-scanner.sgp69k.workers.dev';
+const CURRENCIES = ['SGD','IDR','THB','MYR','PHP','VND','USD'];
+
+let items = JSON.parse(localStorage.getItem('pv_items') || '[]');
+let rates = {};
+let currentImageBase64 = null;
+let currentImageMime = 'image/jpeg';
+let currentImageThumb = null;
+
+// Init
+updatePVMeta();
+fetchRates();
+renderItems();
+
+function updatePVMeta() {
+  const pvNum = document.getElementById('pv-num').value;
+  const pvMonth = document.getElementById('pv-month').value;
+  document.getElementById('display-pvnum').textContent = pvNum;
+  document.getElementById('display-month').textContent = pvMonth;
+  document.getElementById('pv-badge').textContent = pvNum;
+}
+
+async function fetchRates() {
+  try {
+    // Fetch SGD-based rates for all ASEAN currencies
+    const res = await fetch('https://api.exchangerate-api.com/v4/latest/SGD');
+    const data = await res.json();
+    // We need how much SGD per 1 unit of foreign currency
+    // data.rates gives how much foreign per 1 SGD, so invert
+    rates['SGD'] = 1;
+    for (const cur of ['IDR','THB','MYR','PHP','VND','USD']) {
+      if (data.rates[cur]) {
+        rates[cur] = 1 / data.rates[cur]; // SGD per 1 unit
+      }
+    }
+    document.getElementById('rate-display').textContent = 
+      `Rates loaded: 1 IDR = SGD ${rates['IDR']?.toFixed(6) || '—'}`;
+    updateSGD();
+  } catch(e) {
+    // Fallback rates
+    rates = { SGD:1, IDR:0.0000758, THB:0.038, MYR:0.30, PHP:0.024, VND:0.000053, USD:1.35 };
+    document.getElementById('rate-display').textContent = 'Using fallback rates (offline)';
+  }
+}
+
+function updateSGD() {
+  const currency = document.getElementById('f-currency').value;
+  const amount = parseFloat(document.getElementById('f-amount').value) || 0;
+  const rate = rates[currency] || 1;
+  const sgd = amount * rate;
+  const preview = document.getElementById('sgd-preview');
+  preview.textContent = amount > 0 ? `S$ ${sgd.toFixed(2)}` : 'S$ —';
+  const rateEl = document.getElementById('rate-display');
+  if (currency !== 'SGD' && rates[currency]) {
+    rateEl.textContent = `Rate: 1 ${currency} = SGD ${rates[currency].toFixed(6)}`;
+  } else {
+    rateEl.textContent = '';
+  }
+}
+
+function handleReceipt(input) {
+  const file = input.files[0];
+  if (!file) return;
+  currentImageMime = file.type || 'image/jpeg';
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const dataUrl = e.target.result;
+    currentImageBase64 = dataUrl.split(',')[1];
+    currentImageThumb = dataUrl;
+    if (file.type.startsWith('image/')) {
+      const img = document.getElementById('preview-img');
+      img.src = dataUrl;
+      img.style.display = 'block';
+    } else {
+      document.getElementById('preview-img').style.display = 'none';
+    }
+    document.getElementById('extract-row').style.display = 'flex';
+    hideStatus('extract-status');
+  };
+  reader.readAsDataURL(file);
+}
+
+function clearReceipt() {
+  currentImageBase64 = null;
+  currentImageThumb = null;
+  document.getElementById('receipt-input').value = '';
+  document.getElementById('preview-img').style.display = 'none';
+  document.getElementById('extract-row').style.display = 'none';
+  hideStatus('extract-status');
+}
+
+async function extractReceipt() {
+  if (!currentImageBase64) return;
+  const btn = document.getElementById('extract-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Extracting...';
+  showStatus('extract-status', 'AI is reading your receipt...', 'info');
+
+  try {
+    // Build content array based on file type
+    let contentArr = [];
+    if (currentImageMime === 'application/pdf') {
+      contentArr = [
+        { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: currentImageBase64 } },
+        { type: 'text', text: 'Extract expense details from this receipt/document. Return ONLY a raw JSON object with these fields: description (concise expense description), date (DD MMM YYYY format), amount (numeric only, no currency symbol), currency (SGD/IDR/THB/MYR/PHP/VND/USD), reference (booking ID or empty string). No markdown, no explanation, just the raw JSON.' }
+      ];
+    } else {
+      const mime = currentImageMime.startsWith('image/') ? currentImageMime : 'image/jpeg';
+      contentArr = [
+        { type: 'image', source: { type: 'base64', media_type: mime, data: currentImageBase64 } },
+        { type: 'text', text: 'Extract expense details from this receipt. Return ONLY a raw JSON object with these fields: description (concise expense description e.g. "Grab Car - Hotel to Airport", "Dinner at Restaurant Name"), date (DD MMM YYYY format), amount (numeric only, no currency symbol), currency (SGD/IDR/THB/MYR/PHP/VND/USD), reference (booking ID or empty string). No markdown, no explanation, just the raw JSON.' }
+      ];
+    }
+
+    const resp = await fetch(WORKER_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        messages: [{ role: 'user', content: contentArr }]
+      })
+    });
+
+    if (!resp.ok) throw new Error('API error ' + resp.status);
+    const data = await resp.json();
+    const text = data.content?.map(b => b.text || '').join('') || '';
+    const clean = text.replace(/```json|```/g, '').trim();
+    const extracted = JSON.parse(clean);
+
+    document.getElementById('f-desc').value = extracted.description || '';
+    document.getElementById('f-date').value = extracted.date || '';
+    document.getElementById('f-amount').value = extracted.amount || '';
+    document.getElementById('f-ref').value = extracted.reference || '';
+    
+    // Set currency
+    const cur = (extracted.currency || 'SGD').toUpperCase();
+    const sel = document.getElementById('f-currency');
+    for (let opt of sel.options) { if (opt.value === cur) { sel.value = cur; break; } }
+    
+    updateSGD();
+    document.getElementById('item-form-card').style.display = 'block';
+    document.getElementById('item-form-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    showStatus('extract-status', '✓ Details extracted — review and edit below', 'success');
+  } catch(e) {
+    showStatus('extract-status', 'Extraction failed: ' + e.message + '. Please fill in manually.', 'error');
+    document.getElementById('item-form-card').style.display = 'block';
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = '✨ Extract details';
+}
+
+function addItem() {
+  const desc = document.getElementById('f-desc').value.trim();
+  const date = document.getElementById('f-date').value.trim();
+  const currency = document.getElementById('f-currency').value;
+  const amount = parseFloat(document.getElementById('f-amount').value) || 0;
+  const ref = document.getElementById('f-ref').value.trim();
+
+  if (!desc) { showStatus('item-status', 'Please enter a description.', 'error'); return; }
+  if (!amount) { showStatus('item-status', 'Please enter an amount.', 'error'); return; }
+
+  const rate = rates[currency] || 1;
+  const sgd = amount * rate;
+
+  const item = {
+    id: Date.now(),
+    desc, date, currency, amount, ref, sgd,
+    rate: rates[currency],
+    thumb: currentImageThumb
+  };
+
+  items.push(item);
+  saveItems();
+  renderItems();
+
+  // Reset form
+  document.getElementById('f-desc').value = '';
+  document.getElementById('f-date').value = '';
+  document.getElementById('f-amount').value = '';
+  document.getElementById('f-ref').value = '';
+  document.getElementById('f-currency').value = 'SGD';
+  document.getElementById('sgd-preview').textContent = 'S$ —';
+  document.getElementById('item-form-card').style.display = 'none';
+  clearReceipt();
+  hideStatus('item-status');
+  hideStatus('extract-status');
+}
+
+function cancelItem() {
+  document.getElementById('item-form-card').style.display = 'none';
+  hideStatus('item-status');
+}
+
+function deleteItem(id) {
+  items = items.filter(i => i.id !== id);
+  saveItems();
+  renderItems();
+}
+
+function renderItems() {
+  const list = document.getElementById('items-list');
+  const countEl = document.getElementById('item-count');
+  const totalRow = document.getElementById('total-row');
+
+  if (items.length === 0) {
+    list.innerHTML = '<div class="empty-state">No items yet — upload a receipt to start</div>';
+    countEl.textContent = '0 items';
+    totalRow.style.display = 'none';
+    return;
+  }
+
+  countEl.textContent = items.length + ' item' + (items.length > 1 ? 's' : '');
+  
+  list.innerHTML = items.map((item, i) => `
+    <div class="item-row">
+      ${item.thumb ? `<img src="${item.thumb}" class="receipt-thumb" alt="receipt">` : `<div class="item-num">${i+1}</div>`}
+      <div class="item-detail">
+        <div class="item-desc">${item.desc}</div>
+        <div class="item-meta">${item.date}${item.ref ? ' · ' + item.ref : ''}</div>
+      </div>
+      <div class="item-amounts">
+        ${item.currency !== 'SGD' ? `<div class="item-orig">${item.currency} ${Number(item.amount).toLocaleString()}</div>` : ''}
+        <div class="item-sgd">S$${item.sgd.toFixed(2)}</div>
+      </div>
+      <button class="item-del" onclick="deleteItem(${item.id})" title="Delete">×</button>
+    </div>
+  `).join('');
+
+  const total = items.reduce((sum, i) => sum + i.sgd, 0);
+  document.getElementById('total-amount').textContent = 'S$' + total.toFixed(2);
+  totalRow.style.display = 'flex';
+}
+
+function saveItems() {
+  localStorage.setItem('pv_items', JSON.stringify(items));
+}
+
+function clearAll() {
+  if (!confirm('Clear all line items?')) return;
+  items = [];
+  saveItems();
+  renderItems();
+}
+
+async function generatePDF() {
+  if (items.length === 0) {
+    showStatus('pdf-status', 'Add at least one line item first.', 'error');
+    return;
+  }
+
+  const btn = document.getElementById('pdf-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Generating...';
+
+  try {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const W = 210, H = 297;
+    const margin = 15;
+    const contentW = W - margin * 2;
+
+    // ── Header ──
+    doc.setFillColor(26, 92, 26);
+    doc.rect(0, 0, W, 28, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(18);
+    doc.setFont('helvetica', 'bold');
+    doc.text('PAYMENT VOUCHER', margin, 12);
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Redington (India) Ltd – ASEAN', margin, 18);
+    doc.text('Confidential – Internal Use Only', margin, 23);
+
+    // PV number top right
+    const pvNum = document.getElementById('pv-num').value;
+    const pvMonth = document.getElementById('pv-month').value;
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.text(pvNum, W - margin, 12, { align: 'right' });
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.text(pvMonth, W - margin, 18, { align: 'right' });
+
+    // ── Meta fields ──
+    let y = 36;
+    doc.setTextColor(30, 30, 30);
+    doc.setDrawColor(220, 220, 220);
+    doc.setLineWidth(0.3);
+
+    const metaFields = [
+      ['Voucher No.', pvNum, 'Pay To', 'Ivan Ong'],
+      ['Period', pvMonth, 'Department', 'Redington ASEAN'],
+      ['Date Submitted', new Date().toLocaleDateString('en-SG', {day:'2-digit',month:'short',year:'numeric'}), 'Position', 'Sales Head ASEAN'],
+    ];
+
+    metaFields.forEach(([l1, v1, l2, v2]) => {
+      const col1X = margin, col2X = margin + contentW / 2 + 5;
+      doc.setFontSize(8); doc.setFont('helvetica', 'normal'); doc.setTextColor(120,120,120);
+      doc.text(l1, col1X, y);
+      doc.text(l2, col2X, y);
+      doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(20,20,20);
+      doc.text(v1, col1X, y + 5);
+      doc.text(v2, col2X, y + 5);
+      doc.line(col1X, y + 8, col1X + contentW/2 - 5, y + 8);
+      doc.line(col2X, y + 8, col2X + contentW/2 - 5, y + 8);
+      y += 13;
+    });
+
+    // ── Table ──
+    y += 4;
+    const colW = [8, 22, 75, 30, 28, 22];
+    const colX = [margin];
+    for (let i = 0; i < colW.length - 1; i++) colX.push(colX[i] + colW[i]);
+    const headers = ['#', 'Date', 'Description', 'Reference', 'Original Amt', 'SGD'];
+
+    // Table header
+    doc.setFillColor(26, 92, 26);
+    doc.rect(margin, y, contentW, 8, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'bold');
+    headers.forEach((h, i) => {
+      const align = i >= 4 ? 'right' : 'left';
+      const x = align === 'right' ? colX[i] + colW[i] - 1 : colX[i] + 1;
+      doc.text(h, x, y + 5.5, { align });
+    });
+    y += 8;
+
+    // Table rows
+    const total = items.reduce((s, i) => s + i.sgd, 0);
+    items.forEach((item, idx) => {
+      const rowH = 9;
+      // Alternate row background
+      if (idx % 2 === 1) {
+        doc.setFillColor(245, 250, 245);
+        doc.rect(margin, y, contentW, rowH, 'F');
+      }
+      doc.setTextColor(30, 30, 30);
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'normal');
+
+      // Row border
+      doc.setDrawColor(220, 220, 220);
+      doc.setLineWidth(0.2);
+      doc.rect(margin, y, contentW, rowH, 'S');
+
+      const vals = [
+        String(idx + 1),
+        item.date || '',
+        item.desc,
+        item.ref || '',
+        item.currency !== 'SGD' ? `${item.currency} ${Number(item.amount).toLocaleString('en', {minimumFractionDigits:0,maximumFractionDigits:0})}` : `SGD ${Number(item.amount).toFixed(2)}`,
+        `S$${item.sgd.toFixed(2)}`
+      ];
+
+      vals.forEach((v, i) => {
+        const align = i >= 4 ? 'right' : 'left';
+        const x = align === 'right' ? colX[i] + colW[i] - 1 : colX[i] + 1;
+        // Truncate long descriptions
+        let text = v;
+        if (i === 2 && v.length > 45) text = v.substring(0, 42) + '...';
+        if (i === 3 && v.length > 18) text = v.substring(0, 15) + '...';
+        doc.text(text, x, y + 6, { align });
+      });
+      y += rowH;
+    });
+
+    // Total row
+    doc.setFillColor(26, 92, 26);
+    doc.rect(margin, y, contentW, 9, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.text('TOTAL (SGD)', colX[4] - 1, y + 6, { align: 'right' });
+    doc.text(`S$${total.toFixed(2)}`, colX[5] + colW[5] - 1, y + 6, { align: 'right' });
+    y += 9;
+
+    // Exchange rate note
+    y += 5;
+    doc.setTextColor(100, 100, 100);
+    doc.setFontSize(7.5);
+    doc.setFont('helvetica', 'italic');
+    const rateNote = Object.entries(rates)
+      .filter(([cur]) => cur !== 'SGD' && items.some(i => i.currency === cur))
+      .map(([cur, rate]) => `1 ${cur} = SGD ${rate.toFixed(6)}`)
+      .join('  |  ');
+    if (rateNote) doc.text('Exchange rates applied: ' + rateNote, margin, y);
+
+    // ── Signatures ──
+    y += 16;
+    doc.setDrawColor(180, 180, 180);
+    doc.setLineWidth(0.4);
+    doc.setTextColor(30, 30, 30);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+
+    const sigCols = [margin, margin + contentW/3, margin + (contentW/3)*2];
+    const sigLabels = ['Prepared By', 'Approved By', 'Acknowledged By'];
+    const sigNames = ['Ivan Ong', 'Prabhu K', ''];
+
+    sigCols.forEach((x, i) => {
+      const colEnd = x + contentW/3 - 8;
+      doc.text(sigLabels[i], x, y);
+      doc.line(x, y + 18, colEnd, y + 18);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8);
+      if (sigNames[i]) doc.text(sigNames[i], x, y + 23);
+      doc.text('Date: ___________', x, y + 29);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9);
+    });
+
+    // ── Footer ──
+    doc.setFillColor(240, 248, 240);
+    doc.rect(0, H - 10, W, 10, 'F');
+    doc.setTextColor(100, 140, 100);
+    doc.setFontSize(7.5);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`${pvNum} · ${pvMonth} · Generated ${new Date().toLocaleDateString('en-SG')} · Redington ASEAN`, W/2, H - 4, { align: 'center' });
+
+    // ── Receipt pages ──
+    const itemsWithThumbs = items.filter(i => i.thumb && i.thumb.startsWith('data:image'));
+    for (let i = 0; i < itemsWithThumbs.length; i++) {
+      const item = itemsWithThumbs[i];
+      doc.addPage();
+      doc.setFillColor(26, 92, 26);
+      doc.rect(0, 0, W, 16, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.text(`Receipt ${i + 1} of ${itemsWithThumbs.length} – ${item.desc}`, margin, 10);
+
+      try {
+        const mime = item.thumb.split(';')[0].split(':')[1];
+        const imgType = mime.includes('png') ? 'PNG' : 'JPEG';
+        // Fit image in page
+        const imgW = contentW;
+        const imgH = Math.min(240, H - 36);
+        doc.addImage(item.thumb, imgType, margin, 22, imgW, imgH, '', 'FAST');
+      } catch(e) {}
+
+      doc.setFillColor(240, 248, 240);
+      doc.rect(0, H - 10, W, 10, 'F');
+      doc.setTextColor(100, 140, 100);
+      doc.setFontSize(7.5);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`${pvNum} · Receipt ${i+1}: ${item.desc} · ${item.date || ''}`, W/2, H - 4, { align: 'center' });
+    }
+
+    // Save
+    const filename = `${pvNum}_Ivan_Ong_${pvMonth.replace(' ', '_')}.pdf`;
+    doc.save(filename);
+    showStatus('pdf-status', `✓ ${filename} downloaded successfully!`, 'success');
+  } catch(e) {
+    showStatus('pdf-status', 'PDF generation failed: ' + e.message, 'error');
+    console.error(e);
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = '📄 Download PDF Voucher';
+}
+
+function showStatus(id, msg, type) {
+  const el = document.getElementById(id);
+  el.textContent = msg;
+  el.className = 'status ' + type;
+  el.style.display = 'block';
+}
+function hideStatus(id) {
+  const el = document.getElementById(id);
+  if (el) { el.style.display = 'none'; el.className = 'status'; }
+}
+</script>
+</body>
+</html>
