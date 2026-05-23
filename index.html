@@ -30,4 +30,233 @@
     .field-wrap { display: flex; flex-direction: column; gap: 4px; }
     .field-wrap.full { grid-column: 1 / -1; }
     .field-wrap label { font-size: 12px; color: #666; font-weight: 500; }
-    .field-wrap input, .field-wrap select { font
+    .field-wrap input, .field-wrap select { font-size: 14px; padding: 8px 10px; border: 1px solid #ddd; border-radius: 6px; width: 100%; background: white; }
+    .sgd-preview { background: #f0f8f0; border: 1px solid #c8d8c8; border-radius: 6px; padding: 8px 10px; font-size: 15px; font-weight: 600; color: #1a5c1a; min-height: 38px; display: flex; align-items: center; }
+    .btn-row { display: flex; gap: 8px; margin-top: 0.875rem; flex-wrap: wrap; }
+    .btn { padding: 9px 16px; border-radius: 8px; border: 1px solid #ddd; background: white; font-size: 14px; cursor: pointer; display: flex; align-items: center; gap: 6px; }
+    .btn.primary { background: #1a5c1a; border-color: #1a5c1a; color: white; }
+    .btn.success { background: #e6f4ea; border-color: #a8d5b0; color: #1e7e34; }
+    .status { font-size: 13px; padding: 9px 12px; border-radius: 8px; margin-top: 0.75rem; display: none; }
+    .status.info { background: #e8f5e9; color: #1a5c1a; }
+    .status.error { background: #fce8e6; color: #c62828; }
+    .items-list { padding: 0; }
+    .item-row { padding: 0.875rem 1rem; border-bottom: 1px solid #f0f0ee; display: flex; align-items: flex-start; gap: 10px; }
+    .receipt-thumb { width: 32px; height: 32px; border-radius: 6px; object-fit: cover; flex-shrink: 0; border: 1px solid #e0e0e0; display: flex; align-items: center; justify-content: center; background: #f9f9f9; font-size: 10px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-icon">📋</div>
+  <div>
+    <h1>PV Expense App</h1>
+    <p>Redington ASEAN · Ivan Ong</p>
+  </div>
+  <div class="pv-badge" id="pv-badge">PV5</div>
+</div>
+
+<div class="container">
+  <div class="card">
+    <div class="card-header"><div class="step-num">ℹ</div><h2>Voucher Details</h2></div>
+    <div class="card-body">
+        <div class="field-grid">
+            <div class="field-wrap"><label>Voucher No.</label><input type="text" id="pv-num" value="PV5" oninput="updatePVMeta()"></div>
+            <div class="field-wrap"><label>Month</label><input type="text" id="pv-month" value="May 2026" oninput="updatePVMeta()"></div>
+        </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><div class="step-num">1</div><h2>Upload Receipt</h2></div>
+    <div class="card-body">
+      <label class="upload-zone" for="receipt-input">
+        <input type="file" id="receipt-input" accept="image/*,application/pdf" onchange="handleReceipt(this)">
+        <div class="upload-icon">📸</div>
+        <p>Tap to upload receipt or PDF</p>
+      </label>
+      <div id="preview-container">
+        <img id="preview-img">
+        <div id="preview-pdf">📄 PDF Document Attached</div>
+      </div>
+      <div class="btn-row" id="extract-row" style="display:none; margin-top:15px;">
+        <button class="btn primary" id="extract-btn" onclick="extractReceipt()">✨ Extract details</button>
+        <button class="btn" onclick="clearReceipt()">✕ Clear</button>
+      </div>
+      <div class="status" id="extract-status"></div>
+    </div>
+  </div>
+
+  <div class="card" id="item-form-card" style="display:none;">
+    <div class="card-header"><div class="step-num">2</div><h2>Review & Edit Line Item</h2></div>
+    <div class="card-body">
+      <div class="field-grid">
+        <div class="field-wrap full"><label>Description</label><input type="text" id="f-desc"></div>
+        <div class="field-wrap"><label>Date</label><input type="text" id="f-date"></div>
+        <div class="field-wrap"><label>Currency</label>
+            <select id="f-currency" onchange="updateSGD()">
+                <option value="SGD">SGD</option><option value="IDR">IDR</option><option value="THB">THB</option>
+                <option value="MYR">MYR</option><option value="USD">USD</option>
+            </select>
+        </div>
+        <div class="field-wrap"><label>Amount</label><input type="number" id="f-amount" oninput="updateSGD()" step="0.01"></div>
+        <div class="field-wrap"><label>SGD Preview</label><div class="sgd-preview" id="sgd-preview">S$ —</div></div>
+        <div class="field-wrap"><label>Reference</label><input type="text" id="f-ref"></div>
+      </div>
+      <div class="btn-row">
+        <button class="btn primary" onclick="addItem()">➕ Add to Voucher</button>
+        <button class="btn" onclick="cancelItem()">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><div class="step-num">3</div><h2>Voucher Line Items</h2><span id="item-count" style="margin-left:auto;">0 items</span></div>
+    <div id="items-list" class="items-list"><div class="empty-state" style="padding:20px; text-align:center; color:#999;">No items yet</div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-body">
+      <button class="btn success" style="width:100%; justify-content:center;" onclick="generatePDF()">📄 Download PDF Voucher</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+const WORKER_URL = 'https://bizcard-scanner.sgp69k.workers.dev';
+let rates = { SGD:1, IDR:0.000085, THB:0.038, MYR:0.30, USD:1.35 };
+let items = [];
+let currentBase64 = null;
+let currentMime = '';
+let currentFileContent = null;
+
+function updatePVMeta() {
+  document.getElementById('pv-badge').textContent = document.getElementById('pv-num').value;
+}
+
+function updateSGD() {
+  const cur = document.getElementById('f-currency').value;
+  const amt = parseFloat(document.getElementById('f-amount').value) || 0;
+  const sgd = amt * (rates[cur] || 1);
+  document.getElementById('sgd-preview').textContent = 'S$ ' + sgd.toFixed(2);
+}
+
+function handleReceipt(input) {
+  const file = input.files[0];
+  if (!file) return;
+  currentMime = file.type;
+  
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    currentFileContent = e.target.result;
+    currentBase64 = currentFileContent.split(',')[1];
+    
+    document.getElementById('preview-container').style.display = 'block';
+    if (currentMime === 'application/pdf') {
+        document.getElementById('preview-img').style.display = 'none';
+        document.getElementById('preview-pdf').style.display = 'block';
+    } else {
+        document.getElementById('preview-pdf').style.display = 'none';
+        document.getElementById('preview-img').src = currentFileContent;
+        document.getElementById('preview-img').style.display = 'block';
+    }
+    
+    document.getElementById('extract-row').style.display = 'flex';
+    // Automatically show Step 2 so user can type if they don't want to wait for AI
+    document.getElementById('item-form-card').style.display = 'block';
+  };
+  reader.readAsDataURL(file);
+}
+
+async function extractReceipt() {
+  const status = document.getElementById('extract-status');
+  status.style.display = 'block';
+  status.className = 'status info';
+  status.textContent = '✨ AI is analyzing...';
+
+  try {
+    const resp = await fetch(WORKER_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        messages: [{ role: 'user', content: [
+            { type: currentMime === 'application/pdf' ? 'document' : 'image', source: { type: 'base64', media_type: currentMime, data: currentBase64 } },
+            { type: 'text', text: 'Return JSON only: {description, date, amount, currency, reference}' }
+        ]}]
+      })
+    });
+
+    const data = await resp.json();
+    const clean = data.content[0].text.replace(/```json|```/gi, '').trim();
+    const j = JSON.parse(clean);
+
+    document.getElementById('f-desc').value = j.description || '';
+    document.getElementById('f-date').value = j.date || '';
+    document.getElementById('f-amount').value = j.amount || '';
+    document.getElementById('f-currency').value = j.currency || 'SGD';
+    updateSGD();
+    status.className = 'status success';
+    status.textContent = '✓ Extraction complete!';
+  } catch (e) {
+    status.className = 'status error';
+    status.textContent = 'Extraction failed. Please fill in details manually.';
+  }
+}
+
+function addItem() {
+  const item = {
+    desc: document.getElementById('f-desc').value,
+    date: document.getElementById('f-date').value,
+    amt: parseFloat(document.getElementById('f-amount').value),
+    cur: document.getElementById('f-currency').value,
+    ref: document.getElementById('f-ref').value,
+    thumb: currentFileContent,
+    isPDF: currentMime === 'application/pdf'
+  };
+  items.push(item);
+  renderItems();
+  clearReceipt();
+  document.getElementById('item-form-card').style.display = 'none';
+}
+
+function renderItems() {
+  const list = document.getElementById('items-list');
+  document.getElementById('item-count').textContent = items.length + ' items';
+  list.innerHTML = items.map((it, i) => `
+    <div class="item-row">
+      <div class="receipt-thumb">${it.isPDF ? 'PDF' : `<img src="${it.thumb}" style="width:100%;height:100%;object-fit:cover;">`}</div>
+      <div style="flex:1">
+        <div style="font-weight:600; font-size:13px;">${it.desc}</div>
+        <div style="font-size:11px; color:#666;">${it.date} · ${it.ref}</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:14px; font-weight:700;">S$${(it.amt * (rates[it.cur]||1)).toFixed(2)}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function clearReceipt() {
+    document.getElementById('receipt-input').value = '';
+    document.getElementById('preview-container').style.display = 'none';
+    document.getElementById('extract-row').style.display = 'none';
+    document.getElementById('extract-status').style.display = 'none';
+    currentFileContent = null;
+}
+
+function cancelItem() {
+    document.getElementById('item-form-card').style.display = 'none';
+    clearReceipt();
+}
+
+async function generatePDF() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    doc.text("PAYMENT VOUCHER - " + document.getElementById('pv-num').value, 10, 10);
+    // ... add table logic ...
+    doc.save("Voucher.pdf");
+}
+</script>
+</body>
+</html>
