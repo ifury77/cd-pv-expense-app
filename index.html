@@ -235,14 +235,15 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 const WORKER_URL = 'https://bizcard-scanner.sgp69k.workers.dev';
 const CURRENCIES = ['SGD','IDR','THB','MYR','PHP','VND','USD'];
 
-// Items stored without images (to avoid localStorage 5MB limit)
-let items = JSON.parse(localStorage.getItem('pv_items') || '[]');
-// Thumbs stored in memory only (lost on page close, but that's OK)
-let thumbStore = {};
 let rates = {};
 let currentImageBase64 = null;
 let currentImageMime = 'image/jpeg';
 let currentImageThumb = null;
+
+// Load items from localStorage (without thumbs)
+let items = JSON.parse(localStorage.getItem('pv_items') || '[]');
+// thumbs live on the item object in memory only
+// (stripped before localStorage save to avoid quota errors)
 
 // Init
 updatePVMeta();
@@ -401,16 +402,11 @@ function addItem() {
   const rate = rates[currency] || 1;
   const sgd = amount * rate;
 
-  const itemId = Date.now();
-  // Store thumb in memory (not localStorage - too large)
-  if (currentImageThumb) {
-    thumbStore[itemId] = currentImageThumb;
-  }
   const item = {
-    id: itemId,
+    id: Date.now(),
     desc, date, currency, amount, ref, sgd,
-    rate: rates[currency]
-    // thumb NOT stored in localStorage to avoid quota errors
+    rate: rates[currency],
+    thumb: currentImageThumb || null  // stored in memory on item object
   };
 
   items.push(item);
@@ -457,7 +453,7 @@ function renderItems() {
   
   list.innerHTML = items.map((item, i) => `
     <div class="item-row">
-      ${thumbStore[item.id] ? `<img src="${thumbStore[item.id]}" class="receipt-thumb" alt="receipt">` : `<div class="item-num">${i+1}</div>`}
+      ${item.thumb ? `<img src="${item.thumb}" class="receipt-thumb" alt="receipt">` : `<div class="item-num">${i+1}</div>`}
       <div class="item-detail">
         <div class="item-desc">${item.desc}</div>
         <div class="item-meta">${item.date}${item.ref ? ' · ' + item.ref : ''}</div>
@@ -476,7 +472,16 @@ function renderItems() {
 }
 
 function saveItems() {
-  localStorage.setItem('pv_items', JSON.stringify(items));
+  // Strip thumbs before saving to avoid localStorage quota
+  const stripped = items.map(i => {
+    const { thumb, ...rest } = i;
+    return rest;
+  });
+  try {
+    localStorage.setItem('pv_items', JSON.stringify(stripped));
+  } catch(e) {
+    console.warn('localStorage save failed:', e);
+  }
 }
 
 function clearAll() {
@@ -650,14 +655,13 @@ async function generatePDF() {
     doc.text(pvNum + ' · ' + pvMonth + ' · Generated ' + new Date().toLocaleDateString('en-SG') + ' · Redington Distribution Pte Ltd', W/2, H-4, {align:'center'});
 
     // ── Receipt image pages ──
-    const itemsWithThumbs = items.filter(i => thumbStore[i.id]);
+    const itemsWithThumbs = items.filter(i => i.thumb);
     console.log('Items with thumbs:', itemsWithThumbs.length, 'of', items.length);
-    console.log('ThumbStore keys:', Object.keys(thumbStore));
 
     for (let i = 0; i < itemsWithThumbs.length; i++) {
       const item = itemsWithThumbs[i];
-      const dataUrl = thumbStore[item.id];
-      console.log('Processing receipt', i+1, 'dataUrl length:', dataUrl ? dataUrl.length : 0);
+      const dataUrl = item.thumb;
+      console.log('Receipt', i+1, 'has image:', !!dataUrl, 'length:', dataUrl ? dataUrl.length : 0);
 
       doc.addPage();
 
