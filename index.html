@@ -2,46 +2,80 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="PV Expense">
 <title>PV Expense App – Redington ASEAN</title>
+<!-- v11 -->
 <style>
-    /* ... keeping your existing styles ... */
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f0f4f0; min-height: 100vh; }
-    .header { background: #1a5c1a; color: white; padding: 1rem 1.25rem; display: flex; align-items: center; gap: 12px; position: sticky; top: 0; z-index: 100; }
-    .header-icon { width: 36px; height: 36px; background: rgba(255,255,255,0.2); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 20px; }
-    .header h1 { font-size: 16px; font-weight: 600; }
-    .header p { font-size: 12px; opacity: 0.8; }
-    .pv-badge { margin-left: auto; background: rgba(255,255,255,0.2); border-radius: 20px; padding: 4px 12px; font-size: 13px; font-weight: 600; }
-    .container { max-width: 640px; margin: 0 auto; padding: 1rem; }
-    .card { background: white; border-radius: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); margin-bottom: 1rem; overflow: hidden; }
-    .card-header { padding: 0.875rem 1rem; border-bottom: 1px solid #f0f0ee; display: flex; align-items: center; gap: 8px; }
-    .card-header h2 { font-size: 14px; font-weight: 600; color: #1a5c1a; }
-    .step-num { width: 22px; height: 22px; background: #1a5c1a; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; }
-    .card-body { padding: 1rem; }
-    .upload-zone { border: 2px dashed #c8d8c8; border-radius: 10px; padding: 1.5rem 1rem; text-align: center; cursor: pointer; transition: all 0.15s; background: #f8fdf8; }
-    .upload-zone:hover { border-color: #1a5c1a; background: #f0f8f0; }
-    .upload-zone input { display: none; }
-    .upload-icon { font-size: 32px; margin-bottom: 8px; }
-    #preview-container { text-align: center; margin-top: 0.75rem; display: none; }
-    #preview-img { max-width: 100%; max-height: 180px; border-radius: 8px; display: none; object-fit: contain; margin: 0 auto; }
-    #preview-pdf { display: none; background: #f4f4f2; border: 1px solid #ddd; border-radius: 8px; padding: 15px; text-align: center; color: #c62828; font-weight: 600; font-size: 14px; }
-    .field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    .field-wrap { display: flex; flex-direction: column; gap: 4px; }
-    .field-wrap.full { grid-column: 1 / -1; }
-    .field-wrap label { font-size: 12px; color: #666; font-weight: 500; }
-    .field-wrap input, .field-wrap select { font-size: 14px; padding: 8px 10px; border: 1px solid #ddd; border-radius: 6px; width: 100%; background: white; }
-    .sgd-preview { background: #f0f8f0; border: 1px solid #c8d8c8; border-radius: 6px; padding: 8px 10px; font-size: 15px; font-weight: 600; color: #1a5c1a; min-height: 38px; display: flex; align-items: center; }
-    .btn-row { display: flex; gap: 8px; margin-top: 0.875rem; flex-wrap: wrap; }
-    .btn { padding: 9px 16px; border-radius: 8px; border: 1px solid #ddd; background: white; font-size: 14px; cursor: pointer; display: flex; align-items: center; gap: 6px; }
-    .btn.primary { background: #1a5c1a; border-color: #1a5c1a; color: white; }
-    .btn.success { background: #e6f4ea; border-color: #a8d5b0; color: #1e7e34; }
-    .status { font-size: 13px; padding: 9px 12px; border-radius: 8px; margin-top: 0.75rem; display: none; }
-    .status.info { background: #e8f5e9; color: #1a5c1a; }
-    .status.error { background: #fce8e6; color: #c62828; }
-    .items-list { padding: 0; }
-    .item-row { padding: 0.875rem 1rem; border-bottom: 1px solid #f0f0ee; display: flex; align-items: flex-start; gap: 10px; }
-    .receipt-thumb { width: 32px; height: 32px; border-radius: 6px; object-fit: cover; flex-shrink: 0; border: 1px solid #e0e0e0; display: flex; align-items: center; justify-content: center; background: #f9f9f9; font-size: 10px; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f0f4f0; min-height: 100vh; }
+.header { background: #1a5c1a; color: white; padding: 1rem 1.25rem; display: flex; align-items: center; gap: 12px; position: sticky; top: 0; z-index: 100; }
+.header-icon { width: 36px; height: 36px; background: rgba(255,255,255,0.2); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 20px; }
+.header h1 { font-size: 16px; font-weight: 600; }
+.header p { font-size: 12px; opacity: 0.8; }
+.pv-badge { margin-left: auto; background: rgba(255,255,255,0.2); border-radius: 20px; padding: 4px 12px; font-size: 13px; font-weight: 600; }
+.container { max-width: 640px; margin: 0 auto; padding: 1rem; }
+.card { background: white; border-radius: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); margin-bottom: 1rem; overflow: hidden; }
+.card-header { padding: 0.875rem 1rem; border-bottom: 1px solid #f0f0ee; display: flex; align-items: center; gap: 8px; }
+.card-header h2 { font-size: 14px; font-weight: 600; color: #1a5c1a; }
+.step-num { width: 22px; height: 22px; background: #1a5c1a; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; }
+.card-body { padding: 1rem; }
+.upload-zone { border: 2px dashed #c8d8c8; border-radius: 10px; padding: 1.5rem 1rem; text-align: center; cursor: pointer; transition: all 0.15s; background: #f8fdf8; }
+.upload-zone:hover { border-color: #1a5c1a; background: #f0f8f0; }
+.upload-zone input { display: none; }
+.upload-icon { font-size: 32px; margin-bottom: 8px; }
+.upload-zone p { font-size: 14px; color: #444; }
+.upload-zone span { font-size: 12px; color: #888; }
+#preview-img { max-width: 100%; max-height: 180px; border-radius: 8px; margin-top: 0.75rem; display: none; object-fit: contain; }
+.thumb-status { font-size: 11px; color: #1a5c1a; margin-top: 4px; display: none; }
+.field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.field-wrap { display: flex; flex-direction: column; gap: 4px; }
+.field-wrap.full { grid-column: 1 / -1; }
+.field-wrap label { font-size: 12px; color: #666; font-weight: 500; }
+.field-wrap input, .field-wrap select { font-size: 14px; padding: 8px 10px; border: 1px solid #ddd; border-radius: 6px; color: #202124; font-family: inherit; width: 100%; background: white; }
+.field-wrap input:focus, .field-wrap select:focus { outline: none; border-color: #1a5c1a; box-shadow: 0 0 0 3px rgba(26,92,26,0.12); }
+.rate-display { font-size: 11px; color: #1a5c1a; margin-top: 2px; font-style: italic; }
+.sgd-preview { background: #f0f8f0; border: 1px solid #c8d8c8; border-radius: 6px; padding: 8px 10px; font-size: 15px; font-weight: 600; color: #1a5c1a; min-height: 38px; display: flex; align-items: center; }
+.btn-row { display: flex; gap: 8px; margin-top: 0.875rem; flex-wrap: wrap; }
+.btn { padding: 9px 16px; border-radius: 8px; border: 1px solid #ddd; background: white; color: #333; font-size: 14px; cursor: pointer; display: flex; align-items: center; gap: 6px; font-family: inherit; transition: all 0.15s; white-space: nowrap; }
+.btn:hover { background: #f5f5f5; }
+.btn:active { transform: scale(0.98); }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+.btn.primary { background: #1a5c1a; border-color: #1a5c1a; color: white; font-weight: 500; }
+.btn.primary:hover { background: #144f14; }
+.btn.danger { background: #fce8e6; border-color: #f5c6c3; color: #c62828; }
+.btn.success { background: #e6f4ea; border-color: #a8d5b0; color: #1e7e34; font-weight: 500; }
+.status { font-size: 13px; padding: 9px 12px; border-radius: 8px; margin-top: 0.75rem; display: none; }
+.status.info { background: #e8f5e9; color: #1a5c1a; display: block; }
+.status.error { background: #fce8e6; color: #c62828; display: block; }
+.status.success { background: #e6f4ea; color: #1e7e34; display: block; }
+.spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid currentColor; border-top-color: transparent; border-radius: 50%; animation: spin 0.7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.items-list { padding: 0; }
+.item-row { padding: 0.875rem 1rem; border-bottom: 1px solid #f0f0ee; display: flex; align-items: flex-start; gap: 10px; }
+.item-row:last-child { border-bottom: none; }
+.item-num { width: 32px; height: 32px; background: #e8f5e9; color: #1a5c1a; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; flex-shrink: 0; }
+.item-detail { flex: 1; min-width: 0; }
+.item-desc { font-size: 13px; font-weight: 500; color: #202124; word-break: break-word; }
+.item-meta { font-size: 12px; color: #888; margin-top: 2px; }
+.item-amounts { text-align: right; flex-shrink: 0; }
+.item-orig { font-size: 12px; color: #888; }
+.item-sgd { font-size: 14px; font-weight: 600; color: #1a5c1a; }
+.item-del { background: none; border: none; color: #ccc; cursor: pointer; font-size: 20px; padding: 0 4px; flex-shrink: 0; line-height: 1; }
+.item-del:hover { color: #c62828; }
+.receipt-thumb { width: 32px; height: 32px; border-radius: 6px; object-fit: cover; flex-shrink: 0; border: 1px solid #e0e0e0; }
+.total-row { padding: 0.875rem 1rem; background: #f0f8f0; display: flex; justify-content: space-between; align-items: center; border-top: 2px solid #c8d8c8; }
+.total-label { font-size: 14px; font-weight: 600; color: #1a5c1a; }
+.total-amount { font-size: 20px; font-weight: 700; color: #1a5c1a; }
+.empty-state { padding: 2rem 1rem; text-align: center; color: #aaa; font-size: 14px; }
+.voucher-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 1rem; }
+.meta-label { font-size: 11px; color: #888; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; }
+.meta-value { font-size: 15px; font-weight: 600; color: #202124; margin-top: 2px; }
 </style>
 </head>
 <body>
@@ -53,32 +87,50 @@
     <p>Redington ASEAN · Ivan Ong</p>
   </div>
   <div class="pv-badge" id="pv-badge">PV5</div>
+  <div style="font-size:10px;opacity:0.6;">v11</div>
 </div>
 
 <div class="container">
+
   <div class="card">
-    <div class="card-header"><div class="step-num">ℹ</div><h2>Voucher Details</h2></div>
-    <div class="card-body">
-        <div class="field-grid">
-            <div class="field-wrap"><label>Voucher No.</label><input type="text" id="pv-num" value="PV5" oninput="updatePVMeta()"></div>
-            <div class="field-wrap"><label>Month</label><input type="text" id="pv-month" value="May 2026" oninput="updatePVMeta()"></div>
-        </div>
+    <div class="card-header">
+      <div class="step-num">ℹ</div>
+      <h2>Voucher Details</h2>
+    </div>
+    <div class="voucher-meta">
+      <div><div class="meta-label">Voucher No.</div><div class="meta-value" id="display-pvnum">PV5</div></div>
+      <div><div class="meta-label">Month</div><div class="meta-value" id="display-month">May 2026</div></div>
+      <div><div class="meta-label">Pay To</div><div class="meta-value">Ivan Ong</div></div>
+      <div><div class="meta-label">Company</div><div class="meta-value">Redington Distribution Pte Ltd</div></div>
+    </div>
+    <div style="padding: 0 1rem 1rem; display: flex; gap: 10px;">
+      <div class="field-wrap" style="flex:1">
+        <label>Voucher No.</label>
+        <input type="text" id="pv-num" value="PV5" oninput="updatePVMeta()">
+      </div>
+      <div class="field-wrap" style="flex:2">
+        <label>Month / Period</label>
+        <input type="text" id="pv-month" value="May 2026" oninput="updatePVMeta()">
+      </div>
     </div>
   </div>
 
   <div class="card">
-    <div class="card-header"><div class="step-num">1</div><h2>Upload Receipt</h2></div>
+    <div class="card-header">
+      <div class="step-num">1</div>
+      <h2>Upload Receipt</h2>
+    </div>
     <div class="card-body">
-      <label class="upload-zone" for="receipt-input">
-        <input type="file" id="receipt-input" accept="image/*,application/pdf" onchange="handleReceipt(this)">
+      <label class="upload-zone" for="receipt-input" style="display:block;cursor:pointer;">
+        <input type="file" id="receipt-input" accept="image/*,application/pdf" onchange="handleReceipt(this)" style="display:none;">
         <div class="upload-icon">📸</div>
-        <p>Tap to upload receipt or PDF</p>
+        <p>Tap to upload receipt photo or PDF</p>
+        <span>JPG, PNG, PDF supported</span>
       </label>
-      <div id="preview-container">
-        <img id="preview-img">
-        <div id="preview-pdf">📄 PDF Document Attached</div>
-      </div>
-      <div class="btn-row" id="extract-row" style="display:none; margin-top:15px;">
+      <img id="preview-img" alt="Receipt preview">
+      <textarea id="thumb-store" style="display:none;"></textarea>
+      <div class="thumb-status" id="thumb-status">✓ Image ready to attach</div>
+      <div class="btn-row" id="extract-row" style="display:none;">
         <button class="btn primary" id="extract-btn" onclick="extractReceipt()">✨ Extract details</button>
         <button class="btn" onclick="clearReceipt()">✕ Clear</button>
       </div>
@@ -87,175 +139,649 @@
   </div>
 
   <div class="card" id="item-form-card" style="display:none;">
-    <div class="card-header"><div class="step-num">2</div><h2>Review & Edit Line Item</h2></div>
+    <div class="card-header">
+      <div class="step-num">2</div>
+      <h2>Review & Edit Line Item</h2>
+    </div>
     <div class="card-body">
       <div class="field-grid">
-        <div class="field-wrap full"><label>Description</label><input type="text" id="f-desc"></div>
-        <div class="field-wrap"><label>Date</label><input type="text" id="f-date"></div>
-        <div class="field-wrap"><label>Currency</label>
-            <select id="f-currency" onchange="updateSGD()">
-                <option value="SGD">SGD</option><option value="IDR">IDR</option><option value="THB">THB</option>
-                <option value="MYR">MYR</option><option value="USD">USD</option>
-            </select>
+        <div class="field-wrap full">
+          <label>Description</label>
+          <input type="text" id="f-desc" placeholder="e.g. Grab Car – Hotel to Airport">
         </div>
-        <div class="field-wrap"><label>Amount</label><input type="number" id="f-amount" oninput="updateSGD()" step="0.01"></div>
-        <div class="field-wrap"><label>SGD Preview</label><div class="sgd-preview" id="sgd-preview">S$ —</div></div>
-        <div class="field-wrap"><label>Reference</label><input type="text" id="f-ref"></div>
+        <div class="field-wrap">
+          <label>Date</label>
+          <input type="text" id="f-date" placeholder="e.g. 15 May 2026">
+        </div>
+        <div class="field-wrap">
+          <label>Currency</label>
+          <select id="f-currency" onchange="updateSGD()">
+            <option value="SGD">SGD</option>
+            <option value="IDR">IDR</option>
+            <option value="THB">THB</option>
+            <option value="MYR">MYR</option>
+            <option value="PHP">PHP</option>
+            <option value="VND">VND</option>
+            <option value="USD">USD</option>
+          </select>
+        </div>
+        <div class="field-wrap">
+          <label>Original Amount</label>
+          <input type="number" id="f-amount" placeholder="0.00" oninput="updateSGD()" step="0.01">
+        </div>
+        <div class="field-wrap">
+          <label>SGD Amount</label>
+          <div class="sgd-preview" id="sgd-preview">S$ —</div>
+          <div class="rate-display" id="rate-display"></div>
+        </div>
+        <div class="field-wrap">
+          <label>Reference / Booking ID</label>
+          <input type="text" id="f-ref" placeholder="Optional">
+        </div>
       </div>
       <div class="btn-row">
         <button class="btn primary" onclick="addItem()">➕ Add to Voucher</button>
         <button class="btn" onclick="cancelItem()">Cancel</button>
       </div>
+      <div class="status" id="item-status"></div>
     </div>
   </div>
 
   <div class="card">
-    <div class="card-header"><div class="step-num">3</div><h2>Voucher Line Items</h2><span id="item-count" style="margin-left:auto;">0 items</span></div>
-    <div id="items-list" class="items-list"><div class="empty-state" style="padding:20px; text-align:center; color:#999;">No items yet</div></div>
+    <div class="card-header">
+      <div class="step-num">3</div>
+      <h2>Voucher Line Items</h2>
+      <span id="item-count" style="margin-left:auto;font-size:12px;color:#888;">0 items</span>
+    </div>
+    <div id="items-list" class="items-list">
+      <div class="empty-state">No items yet — upload a receipt to start</div>
+    </div>
+    <div class="total-row" id="total-row" style="display:none;">
+      <div class="total-label">TOTAL (SGD)</div>
+      <div class="total-amount" id="total-amount">S$0.00</div>
+    </div>
   </div>
 
   <div class="card">
+    <div class="card-header">
+      <div class="step-num">4</div>
+      <h2>Generate Payment Voucher PDF</h2>
+    </div>
     <div class="card-body">
-      <button class="btn success" style="width:100%; justify-content:center;" onclick="generatePDF()">📄 Download PDF Voucher</button>
+      <p style="font-size:13px;color:#666;margin-bottom:0.75rem;">Downloads a PDF with all line items + receipt images attached.</p>
+      <div class="btn-row">
+        <button class="btn success" id="pdf-btn" onclick="generatePDF()">📄 Download PDF Voucher</button>
+        <button class="btn danger" onclick="clearAll()">🗑 Clear All</button>
+      </div>
+      <div class="status" id="pdf-status"></div>
     </div>
   </div>
+
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
 const WORKER_URL = 'https://bizcard-scanner.sgp69k.workers.dev';
-let rates = { SGD:1, IDR:0.000085, THB:0.038, MYR:0.30, USD:1.35 };
-let items = [];
+
+// State
+let rates = {};
 let currentBase64 = null;
-let currentMime = '';
-let currentFileContent = null;
+let currentMime = 'image/jpeg';
+let currentThumb = null;
+let thumbReady = false;
+let pendingThumb = null;  // NEVER cleared until addItem() completes
+
+// Items: stored in memory with thumbs; localStorage has text only
+let items = JSON.parse(localStorage.getItem('pv_items') || '[]');
+// items loaded from localStorage won't have thumbs — that's expected
+
+updatePVMeta();
+fetchRates();
+renderItems();
 
 function updatePVMeta() {
-  document.getElementById('pv-badge').textContent = document.getElementById('pv-num').value;
+  const n = document.getElementById('pv-num').value;
+  const m = document.getElementById('pv-month').value;
+  document.getElementById('display-pvnum').textContent = n;
+  document.getElementById('display-month').textContent = m;
+  document.getElementById('pv-badge').textContent = n;
+}
+
+async function fetchRates() {
+  try {
+    const res = await fetch('https://api.exchangerate-api.com/v4/latest/SGD');
+    const data = await res.json();
+    rates = { SGD: 1 };
+    for (const cur of ['IDR','THB','MYR','PHP','VND','USD']) {
+      if (data.rates[cur]) rates[cur] = 1 / data.rates[cur];
+    }
+    document.getElementById('rate-display').textContent =
+      'Rates loaded: 1 IDR = SGD ' + (rates['IDR']||0).toFixed(6);
+  } catch(e) {
+    rates = { SGD:1, IDR:0.0000758, THB:0.038, MYR:0.30, PHP:0.024, VND:0.000053, USD:1.35 };
+    document.getElementById('rate-display').textContent = 'Using fallback rates (offline)';
+  }
 }
 
 function updateSGD() {
   const cur = document.getElementById('f-currency').value;
   const amt = parseFloat(document.getElementById('f-amount').value) || 0;
   const sgd = amt * (rates[cur] || 1);
-  document.getElementById('sgd-preview').textContent = 'S$ ' + sgd.toFixed(2);
+  document.getElementById('sgd-preview').textContent = amt > 0 ? 'S$ ' + sgd.toFixed(2) : 'S$ —';
+  document.getElementById('rate-display').textContent =
+    cur !== 'SGD' && rates[cur] ? 'Rate: 1 ' + cur + ' = SGD ' + rates[cur].toFixed(6) : '';
+}
+
+// Compress image using canvas — returns a Promise<dataURL>
+function compressImage(dataUrl) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const MAX = 1400;
+      let w = img.width, h = img.height;
+      if (w > MAX || h > MAX) {
+        if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
+        else { w = Math.round(w * MAX / h); h = MAX; }
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      resolve(canvas.toDataURL('image/jpeg', 0.80));
+    };
+    img.onerror = reject;
+    img.src = dataUrl;
+  });
+}
+
+function setThumb(dataUrl) {
+  // Single function to set thumb in ALL stores at once
+  currentThumb = dataUrl;
+  pendingThumb = dataUrl;
+  const ta = document.getElementById('thumb-store');
+  if (ta) ta.value = dataUrl;
+  thumbReady = true;
+  console.log('setThumb: stored', dataUrl ? dataUrl.length : 0, 'chars in all stores');
+  document.getElementById('thumb-status').style.display = dataUrl ? 'block' : 'none';
+  document.getElementById('thumb-status').textContent = dataUrl
+    ? '✓ Image ready (' + Math.round(dataUrl.length/1024) + ' KB)'
+    : '';
 }
 
 function handleReceipt(input) {
   const file = input.files[0];
   if (!file) return;
-  currentMime = file.type;
-  
+  currentMime = file.type || 'image/jpeg';
+  // Reset all stores
+  currentThumb = null; pendingThumb = null; thumbReady = false;
+  const ta = document.getElementById('thumb-store');
+  if (ta) ta.value = '';
+  document.getElementById('thumb-status').style.display = 'none';
+  const tsClear = document.getElementById('thumb-store');
+  if (tsClear) tsClear.value = '';
+
   const reader = new FileReader();
   reader.onload = (e) => {
-    currentFileContent = e.target.result;
-    currentBase64 = currentFileContent.split(',')[1];
-    
-    document.getElementById('preview-container').style.display = 'block';
-    if (currentMime === 'application/pdf') {
-        document.getElementById('preview-img').style.display = 'none';
-        document.getElementById('preview-pdf').style.display = 'block';
+    const dataUrl = e.target.result;
+    console.log('reader.onload fired, file.type:', file.type, 'dataUrl len:', dataUrl.length);
+    currentBase64 = dataUrl.split(',')[1];
+
+    if (!file.type || file.type.startsWith('image/') || (!file.type.includes('pdf') && dataUrl.startsWith('data:image'))) {
+      document.getElementById('preview-img').src = dataUrl;
+      document.getElementById('preview-img').style.display = 'block';
+      // Set thumb immediately with original (synchronous)
+      console.log('About to call setThumb with len:', dataUrl.length);
+      setThumb(dataUrl);
+      // Then try to compress in background (non-blocking, updates if succeeds)
+      compressImage(dataUrl).then(compressed => {
+        setThumb(compressed);
+        console.log('Compression done, updated to', compressed.length, 'chars');
+      }).catch(err => {
+        console.warn('Compression failed, keeping original:', err.message);
+      });
+    } else if (file.type === 'application/pdf') {
+      // Store PDF dataUrl for attachment
+      const pdfDataUrl = dataUrl;
+      currentThumb = pdfDataUrl;
+      pendingThumb = pdfDataUrl;
+      const ta = document.getElementById('thumb-store');
+      if (ta) ta.value = pdfDataUrl;
+      thumbReady = true;
+      document.getElementById('preview-img').style.display = 'none';
+      document.getElementById('thumb-status').style.display = 'block';
+      document.getElementById('thumb-status').textContent = '📄 PDF ready to attach';
+      console.log('PDF stored as thumb, len:', pdfDataUrl.length);
     } else {
-        document.getElementById('preview-pdf').style.display = 'none';
-        document.getElementById('preview-img').src = currentFileContent;
-        document.getElementById('preview-img').style.display = 'block';
+      currentThumb = null; pendingThumb = null; thumbReady = true;
     }
-    
     document.getElementById('extract-row').style.display = 'flex';
-    // Automatically show Step 2 so user can type if they don't want to wait for AI
-    document.getElementById('item-form-card').style.display = 'block';
+    hideStatus('extract-status');
   };
   reader.readAsDataURL(file);
 }
 
+function clearReceipt() {
+  currentBase64 = null;
+  currentThumb = null;
+  thumbReady = false;
+  // NOTE: pendingThumb and thumb-store NOT cleared here — addItem() needs them
+  document.getElementById('receipt-input').value = '';
+  document.getElementById('preview-img').style.display = 'none';
+  document.getElementById('thumb-status').style.display = 'none';
+  document.getElementById('extract-row').style.display = 'none';
+  hideStatus('extract-status');
+}
+
 async function extractReceipt() {
-  const status = document.getElementById('extract-status');
-  status.style.display = 'block';
-  status.className = 'status info';
-  status.textContent = '✨ AI is analyzing...';
+  if (!currentBase64) return;
+  const btn = document.getElementById('extract-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Extracting...';
+  showStatus('extract-status', 'AI is reading your receipt...', 'info');
 
   try {
+    let contentArr;
+    if (currentMime === 'application/pdf') {
+      contentArr = [
+        { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: currentBase64 } },
+        { type: 'text', text: 'Extract expense details as a SINGLE line item. If multiple nights/days, sum into one total. Return ONLY a raw JSON object (not array): {description, date (first date, DD MMM YYYY), amount (total, numeric only), currency (SGD/IDR/THB/MYR/PHP/VND/USD), reference (booking ID or empty)}. No markdown, single JSON object only.' }
+      ];
+    } else {
+      const mime = currentMime.startsWith('image/') ? currentMime : 'image/jpeg';
+      contentArr = [
+        { type: 'image', source: { type: 'base64', media_type: mime, data: currentBase64 } },
+        { type: 'text', text: 'Extract expense details from this receipt as a SINGLE line item. If there are multiple nights or days, combine them into ONE total. Return ONLY a raw JSON object (not array) with these fields: description (e.g. "Hotel accommodation at Mercure Bangkok Sukhumvit 24" or "Grab Car - Hotel to Airport"), date (use first date in DD MMM YYYY format), amount (total numeric amount, sum all nights/days if multiple), currency (SGD/IDR/THB/MYR/PHP/VND/USD), reference (booking/receipt ID or empty string). No markdown, no array, just a single JSON object {}.' }
+      ];
+    }
+
     const resp = await fetch(WORKER_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
-        messages: [{ role: 'user', content: [
-            { type: currentMime === 'application/pdf' ? 'document' : 'image', source: { type: 'base64', media_type: currentMime, data: currentBase64 } },
-            { type: 'text', text: 'Return JSON only: {description, date, amount, currency, reference}' }
-        ]}]
+        max_tokens: 800,
+        messages: [{ role: 'user', content: contentArr }]
       })
     });
 
+    if (!resp.ok) throw new Error('API error ' + resp.status);
     const data = await resp.json();
-    const clean = data.content[0].text.replace(/```json|```/gi, '').trim();
-    const j = JSON.parse(clean);
+    const text = (data.content || []).map(b => b.text || '').join('');
+    console.log('Extracted text:', text.substring(0, 300));
 
+    // Strip markdown fences and parse
+    const clean = text.replace(/```json|```/gi, '').trim();
+    let parsed;
+    try { parsed = JSON.parse(clean); } 
+    catch(e) { throw new Error('Could not parse AI response: ' + text.substring(0, 80)); }
+
+    // Handle both array (multiple items) and single object
+    const jsonItems = Array.isArray(parsed) ? parsed : [parsed];
+    console.log('Parsed', jsonItems.length, 'item(s):', jsonItems);
+
+    const validCur = ['SGD','IDR','THB','MYR','PHP','VND','USD'];
+
+    // Always merge into a single line item (sum amounts if array)
+    let j;
+    if (jsonItems.length === 1) {
+      j = jsonItems[0];
+    } else {
+      // Sum all amounts into one item
+      const cur = ((jsonItems[0].currency || 'SGD') + '').toUpperCase();
+      const totalAmt = jsonItems.reduce((s, x) => s + (parseFloat(x.amount) || 0), 0);
+      // Build description with date range
+      const firstDate = jsonItems[0].date || '';
+      const lastDate = jsonItems[jsonItems.length-1].date || '';
+      const dateRange = firstDate === lastDate ? firstDate : firstDate + ' – ' + lastDate;
+      const desc = jsonItems[0].description + (jsonItems.length > 1 ? ' (' + jsonItems.length + ' nights)' : '');
+      j = {
+        description: desc,
+        date: firstDate,
+        amount: Math.round(totalAmt * 100) / 100,
+        currency: validCur.includes(cur) ? cur : 'SGD',
+        reference: jsonItems[0].reference || ''
+      };
+      console.log('Merged', jsonItems.length, 'items into one:', j);
+    }
+
+    // Fill form with single item
     document.getElementById('f-desc').value = j.description || '';
     document.getElementById('f-date').value = j.date || '';
     document.getElementById('f-amount').value = j.amount || '';
-    document.getElementById('f-currency').value = j.currency || 'SGD';
+    document.getElementById('f-ref').value = j.reference || '';
+    const cur = ((j.currency || 'SGD') + '').toUpperCase();
+    document.getElementById('f-currency').value = validCur.includes(cur) ? cur : 'SGD';
     updateSGD();
-    status.className = 'status success';
-    status.textContent = '✓ Extraction complete!';
-  } catch (e) {
-    status.className = 'status error';
-    status.textContent = 'Extraction failed. Please fill in details manually.';
+    document.getElementById('item-form-card').style.display = 'block';
+    document.getElementById('item-form-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    showStatus('extract-status', '✓ Extracted' + (jsonItems.length > 1 ? ' (' + jsonItems.length + ' nights merged into 1 item)' : '') + ' — review below', 'success');
+  } catch(e) {
+    showStatus('extract-status', 'Extraction failed: ' + e.message + '. Fill in manually below.', 'error');
+    document.getElementById('item-form-card').style.display = 'block';
   }
+  btn.disabled = false;
+  btn.innerHTML = '✨ Extract details';
 }
 
 function addItem() {
+  const desc = document.getElementById('f-desc').value.trim();
+  const date = document.getElementById('f-date').value.trim();
+  const currency = document.getElementById('f-currency').value;
+  const amount = parseFloat(document.getElementById('f-amount').value) || 0;
+  const ref = document.getElementById('f-ref').value.trim();
+
+  if (!desc) { showStatus('item-status', 'Please enter a description.', 'error'); return; }
+  if (!amount) { showStatus('item-status', 'Please enter an amount.', 'error'); return; }
+
+  const sgd = amount * (rates[currency] || 1);
+
+  // Read thumb from all stores - use whichever is available
+  const thumbEl = document.getElementById('thumb-store');
+  const taVal = thumbEl && thumbEl.value && thumbEl.value.startsWith('data:') ? thumbEl.value : null;
+  const thumbSnapshot = taVal || pendingThumb || currentThumb || null;
+  console.log('addItem: textarea=', !!taVal, 'pendingThumb=', !!pendingThumb, 'final=', !!thumbSnapshot, 'len=', thumbSnapshot ? thumbSnapshot.length : 0);
+
   const item = {
-    desc: document.getElementById('f-desc').value,
-    date: document.getElementById('f-date').value,
-    amt: parseFloat(document.getElementById('f-amount').value),
-    cur: document.getElementById('f-currency').value,
-    ref: document.getElementById('f-ref').value,
-    thumb: currentFileContent,
-    isPDF: currentMime === 'application/pdf'
+    id: Date.now(),
+    desc, date, currency, amount, ref, sgd,
+    rate: rates[currency] || 1,
+    thumb: thumbSnapshot
   };
+
+  console.log('addItem: item.thumb=', !!item.thumb, item.thumb ? item.thumb.length : 0);
+
   items.push(item);
+  pendingThumb = null;
+  // Clear DOM store after capture
+  const ts = document.getElementById('thumb-store');
+  if (ts) { ts.value = ''; }
+  saveItems();
   renderItems();
-  clearReceipt();
+
+  // Reset
+  ['f-desc','f-date','f-amount','f-ref'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('f-currency').value = 'SGD';
+  document.getElementById('sgd-preview').textContent = 'S$ —';
   document.getElementById('item-form-card').style.display = 'none';
+  clearReceipt();
+  hideStatus('item-status');
+  hideStatus('extract-status');
+}
+
+function cancelItem() {
+  document.getElementById('item-form-card').style.display = 'none';
+  hideStatus('item-status');
+}
+
+function deleteItem(id) {
+  items = items.filter(i => i.id !== id);
+  saveItems();
+  renderItems();
+}
+
+function saveItems() {
+  // Save text data only — strip thumbs to avoid localStorage quota
+  try {
+    localStorage.setItem('pv_items', JSON.stringify(
+      items.map(({ thumb, ...rest }) => rest)
+    ));
+  } catch(e) { console.warn('localStorage save failed', e); }
 }
 
 function renderItems() {
   const list = document.getElementById('items-list');
-  document.getElementById('item-count').textContent = items.length + ' items';
-  list.innerHTML = items.map((it, i) => `
+  const countEl = document.getElementById('item-count');
+  const totalRow = document.getElementById('total-row');
+
+  if (!items.length) {
+    list.innerHTML = '<div class="empty-state">No items yet — upload a receipt to start</div>';
+    countEl.textContent = '0 items';
+    totalRow.style.display = 'none';
+    return;
+  }
+
+  countEl.textContent = items.length + ' item' + (items.length !== 1 ? 's' : '');
+  list.innerHTML = items.map((item, i) => `
     <div class="item-row">
-      <div class="receipt-thumb">${it.isPDF ? 'PDF' : `<img src="${it.thumb}" style="width:100%;height:100%;object-fit:cover;">`}</div>
-      <div style="flex:1">
-        <div style="font-weight:600; font-size:13px;">${it.desc}</div>
-        <div style="font-size:11px; color:#666;">${it.date} · ${it.ref}</div>
+      ${item.thumb
+        ? `<img src="${item.thumb}" class="receipt-thumb" alt="receipt" title="Image: ${item.thumb ? item.thumb.length : 0} chars">`
+        : `<div class="item-num" title="No image stored">${i+1}</div>`}
+      <div class="item-detail">
+        <div class="item-desc">${item.desc}</div>
+        <div class="item-meta">${item.date || ''}${item.ref ? ' · ' + item.ref : ''}</div>
       </div>
-      <div style="text-align:right">
-        <div style="font-size:14px; font-weight:700;">S$${(it.amt * (rates[it.cur]||1)).toFixed(2)}</div>
+      <div class="item-amounts">
+        ${item.currency !== 'SGD' ? `<div class="item-orig">${item.currency} ${Number(item.amount).toLocaleString()}</div>` : ''}
+        <div class="item-sgd">S$${item.sgd.toFixed(2)}</div>
       </div>
-    </div>
-  `).join('');
+      <button class="item-del" onclick="deleteItem(${item.id})">×</button>
+    </div>`).join('');
+
+  const total = items.reduce((s, i) => s + i.sgd, 0);
+  document.getElementById('total-amount').textContent = 'S$' + total.toFixed(2);
+  totalRow.style.display = 'flex';
 }
 
-function clearReceipt() {
-    document.getElementById('receipt-input').value = '';
-    document.getElementById('preview-container').style.display = 'none';
-    document.getElementById('extract-row').style.display = 'none';
-    document.getElementById('extract-status').style.display = 'none';
-    currentFileContent = null;
-}
-
-function cancelItem() {
-    document.getElementById('item-form-card').style.display = 'none';
-    clearReceipt();
+function clearAll() {
+  if (!confirm('Clear all line items?')) return;
+  items = [];
+  saveItems();
+  renderItems();
 }
 
 async function generatePDF() {
+  if (!items.length) { showStatus('pdf-status', 'Add at least one line item first.', 'error'); return; }
+  const btn = document.getElementById('pdf-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Generating...';
+
+  try {
     const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
-    doc.text("PAYMENT VOUCHER - " + document.getElementById('pv-num').value, 10, 10);
-    // ... add table logic ...
-    doc.save("Voucher.pdf");
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const W = 210, H = 297, margin = 14, contentW = W - margin * 2;
+
+    const cols = [
+      { label:'#',          w:8,  align:'center' },
+      { label:'Date',       w:25, align:'left'   },
+      { label:'Description',w:72, align:'left'   },
+      { label:'Reference',  w:28, align:'left'   },
+      { label:'Orig. Amt',  w:28, align:'right'  },
+      { label:'SGD',        w:21, align:'right'  },
+    ];
+    let cx = margin;
+    cols.forEach(c => { c.x = cx; cx += c.w; });
+
+    function cell(col, y, rowH, text) {
+      doc.setFont('helvetica', 'normal');
+      const maxC = Math.floor(col.w / 2.0);
+      let t = String(text || '');
+      if (t.length > maxC) t = t.substring(0, maxC - 2) + '..';
+      let tx;
+      if (col.align === 'right') tx = col.x + col.w - 1.5;
+      else if (col.align === 'center') tx = col.x + col.w / 2;
+      else tx = col.x + 1.5;
+      doc.text(t, tx, y + rowH * 0.65, { align: col.align });
+    }
+
+    // Header
+    doc.setFillColor(26,92,26); doc.rect(0,0,W,26,'F');
+    doc.setTextColor(255,255,255);
+    doc.setFontSize(16); doc.setFont('helvetica','bold');
+    doc.text('PAYMENT VOUCHER', margin, 11);
+    doc.setFontSize(8); doc.setFont('helvetica','normal');
+    doc.text('Redington Distribution Pte Ltd (ASEAN)  ·  Confidential', margin, 17);
+    const pvNum = document.getElementById('pv-num').value;
+    const pvMonth = document.getElementById('pv-month').value;
+    doc.setFontSize(13); doc.setFont('helvetica','bold');
+    doc.text(pvNum, W-margin, 11, {align:'right'});
+    doc.setFontSize(9); doc.setFont('helvetica','normal');
+    doc.text(pvMonth, W-margin, 17, {align:'right'});
+
+    // Meta
+    let y = 32;
+    const half = contentW / 2;
+    [
+      ['Voucher No.', pvNum, 'Pay To', 'Ivan Ong'],
+      ['Period', pvMonth, 'Department', 'Redington Distribution Pte Ltd'],
+      ['Date Submitted', new Date().toLocaleDateString('en-SG',{day:'2-digit',month:'long',year:'numeric'}), 'Position', 'Sales Head ASEAN'],
+    ].forEach(([l1,v1,l2,v2]) => {
+      doc.setFontSize(7.5); doc.setFont('helvetica','normal'); doc.setTextColor(130,130,130);
+      doc.text(l1, margin, y); doc.text(l2, margin+half+4, y);
+      doc.setFontSize(10); doc.setFont('helvetica','bold'); doc.setTextColor(20,20,20);
+      doc.text(v1, margin, y+5); doc.text(v2, margin+half+4, y+5);
+      doc.setDrawColor(210,210,210); doc.setLineWidth(0.25);
+      doc.line(margin, y+8, margin+half-4, y+8);
+      doc.line(margin+half+4, y+8, margin+contentW, y+8);
+      y += 12;
+    });
+
+    // Table header
+    y += 3;
+    const rowH = 8;
+    doc.setFillColor(26,92,26); doc.rect(margin, y, contentW, rowH, 'F');
+    doc.setTextColor(255,255,255); doc.setFontSize(8); doc.setFont('helvetica','bold');
+    cols.forEach(c => {
+      let tx;
+      if (c.align==='right') tx = c.x+c.w-1.5;
+      else if (c.align==='center') tx = c.x+c.w/2;
+      else tx = c.x+1.5;
+      doc.text(c.label, tx, y+rowH*0.65, {align:c.align});
+    });
+    doc.setDrawColor(255,255,255); doc.setLineWidth(0.2);
+    let dvx = margin;
+    cols.slice(0,-1).forEach(c => { dvx+=c.w; doc.line(dvx,y,dvx,y+rowH); });
+    y += rowH;
+
+    // Table rows
+    const total = items.reduce((s,i)=>s+i.sgd,0);
+    items.forEach((item, idx) => {
+      doc.setFillColor(...(idx%2===1 ? [245,250,245] : [255,255,255]));
+      doc.rect(margin, y, contentW, rowH, 'F');
+      doc.setDrawColor(220,220,220); doc.setLineWidth(0.2);
+      doc.rect(margin, y, contentW, rowH, 'S');
+      let vx = margin;
+      cols.slice(0,-1).forEach(c => { vx+=c.w; doc.line(vx,y,vx,y+rowH); });
+      doc.setTextColor(30,30,30); doc.setFontSize(8);
+      const orig = item.currency!=='SGD'
+        ? item.currency+' '+Number(item.amount).toLocaleString('en',{maximumFractionDigits:0})
+        : 'SGD '+Number(item.amount).toFixed(2);
+      [idx+1, item.date||'', item.desc, item.ref||'', orig, 'S$'+item.sgd.toFixed(2)]
+        .forEach((v,i) => cell(cols[i], y, rowH, v));
+      y += rowH;
+    });
+
+    // Total
+    doc.setFillColor(26,92,26); doc.rect(margin,y,contentW,rowH+1,'F');
+    doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(9);
+    doc.text('TOTAL (SGD)', cols[4].x-1.5, y+(rowH+1)*0.65, {align:'right'});
+    doc.text('S$'+total.toFixed(2), cols[5].x+cols[5].w-1.5, y+(rowH+1)*0.65, {align:'right'});
+    y += rowH+1;
+
+    // Exchange rate note
+    y += 4;
+    const usedCur = [...new Set(items.map(i=>i.currency).filter(c=>c!=='SGD'))];
+    if (usedCur.length) {
+      doc.setTextColor(100,100,100); doc.setFontSize(7.5); doc.setFont('helvetica','italic');
+      doc.text('Exchange rates: '+usedCur.map(c=>'1 '+c+' = SGD '+(rates[c]||0).toFixed(6)).join('  |  '), margin, y);
+    }
+
+    // Signatures
+    y += 14;
+    doc.setDrawColor(180,180,180); doc.setLineWidth(0.4);
+    const sigW = contentW/2 - 14;
+    [margin, margin+contentW/2+10].forEach((sx, i) => {
+      doc.setTextColor(30,30,30); doc.setFont('helvetica','bold'); doc.setFontSize(9);
+      doc.text(['Prepared By','Approved By'][i], sx, y);
+      doc.line(sx, y+17, sx+sigW, y+17);
+      doc.setFont('helvetica','normal'); doc.setFontSize(8);
+      doc.text(['Ivan Ong','Prabhu K'][i], sx, y+22);
+      doc.text('Date: ___________', sx, y+28);
+    });
+
+    // Footer
+    doc.setFillColor(240,248,240); doc.rect(0,H-10,W,10,'F');
+    doc.setTextColor(100,140,100); doc.setFontSize(7.5); doc.setFont('helvetica','normal');
+    doc.text(pvNum+' · '+pvMonth+' · Generated '+new Date().toLocaleDateString('en-SG')+' · Redington Distribution Pte Ltd', W/2, H-4, {align:'center'});
+
+    // ── Receipt pages ──
+    const withThumbs = items.filter(i => i.thumb);
+    console.log('Receipt pages to add:', withThumbs.length, 'of', items.length, 'items');
+
+    for (let i = 0; i < withThumbs.length; i++) {
+      const item = withThumbs[i];
+      const isPDF = item.thumb.startsWith('data:application/pdf');
+      const isImage = item.thumb.startsWith('data:image');
+      doc.addPage();
+
+      // Header
+      doc.setFillColor(26,92,26); doc.rect(0,0,W,16,'F');
+      doc.setTextColor(255,255,255); doc.setFontSize(9); doc.setFont('helvetica','bold');
+      doc.text('Receipt '+(i+1)+' of '+withThumbs.length+' — '+pvNum, margin, 7);
+      doc.setFont('helvetica','normal'); doc.setFontSize(8);
+      doc.text((item.desc||'').substring(0,70), margin, 13);
+
+      // Meta bar
+      doc.setTextColor(30,30,30); doc.setFontSize(8);
+      const amt = item.currency!=='SGD'
+        ? item.currency+' '+Number(item.amount).toLocaleString()+' = S$'+item.sgd.toFixed(2)
+        : 'S$'+item.sgd.toFixed(2);
+      doc.setFont('helvetica','bold'); doc.text('Date:', margin, 23);
+      doc.setFont('helvetica','normal'); doc.text(item.date||'—', margin+11, 23);
+      doc.setFont('helvetica','bold'); doc.text('Amount:', margin+55, 23);
+      doc.setFont('helvetica','normal'); doc.text(amt, margin+73, 23);
+      if (item.ref) {
+        doc.setFont('helvetica','bold'); doc.text('Ref:', margin+140, 23);
+        doc.setFont('helvetica','normal'); doc.text(String(item.ref).substring(0,14), margin+150, 23);
+      }
+      doc.setDrawColor(180,180,180); doc.setLineWidth(0.3);
+      doc.line(margin, 26, W-margin, 26);
+
+      if (isImage) {
+        try {
+          const imgType = item.thumb.includes('image/png') ? 'PNG' : 'JPEG';
+          doc.addImage(item.thumb, imgType, margin, 30, contentW, 0);
+          console.log('Receipt', i+1, 'image added OK');
+        } catch(e) {
+          console.error('Receipt', i+1, 'addImage error:', e.message);
+          doc.setTextColor(150,150,150); doc.setFontSize(10);
+          doc.text('Image render error: '+e.message, margin, 60);
+        }
+      } else if (isPDF) {
+        // PDF receipt - show note (jsPDF cannot embed PDFs as pages)
+        doc.setFillColor(245,250,245);
+        doc.rect(margin, 35, contentW, 40, 'F');
+        doc.setDrawColor(26,92,26); doc.setLineWidth(0.5);
+        doc.rect(margin, 35, contentW, 40, 'S');
+        doc.setTextColor(26,92,26); doc.setFontSize(11); doc.setFont('helvetica','bold');
+        doc.text('PDF Receipt Attached', margin+6, 48);
+        doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(60,60,60);
+        doc.text('The original PDF receipt file should be attached to this claim.', margin+6, 57);
+        doc.text('All details are captured in the summary above.', margin+6, 65);
+      }
+
+      // Footer
+      doc.setFillColor(240,248,240); doc.rect(0,H-10,W,10,'F');
+      doc.setTextColor(100,140,100); doc.setFontSize(7.5); doc.setFont('helvetica','normal');
+      doc.text(pvNum+' · Receipt '+(i+1)+': '+(item.desc||'').substring(0,55), W/2, H-4, {align:'center'});
+    }
+
+    const fname = pvNum+'_Ivan_Ong_'+pvMonth.replace(' ','_')+'.pdf';
+    doc.save(fname);
+    showStatus('pdf-status', '✓ '+fname+' downloaded! ('+items.length+' items, '+withThumbs.length+' receipt images)', 'success');
+  } catch(e) {
+    console.error('PDF error:', e);
+    showStatus('pdf-status', 'PDF error: '+e.message, 'error');
+  }
+  btn.disabled = false;
+  btn.innerHTML = '📄 Download PDF Voucher';
+}
+
+function showStatus(id, msg, type) {
+  const el = document.getElementById(id);
+  el.textContent = msg; el.className = 'status '+type; el.style.display = 'block';
+}
+function hideStatus(id) {
+  const el = document.getElementById(id);
+  if (el) { el.style.display = 'none'; el.className = 'status'; }
 }
 </script>
 </body>
