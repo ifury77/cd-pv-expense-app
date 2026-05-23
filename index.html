@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="PV Expense">
 <title>PV Expense App – Redington ASEAN</title>
-<!-- v11 -->
+<!-- v12 -->
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f0f4f0; min-height: 100vh; }
@@ -31,7 +31,9 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .upload-icon { font-size: 32px; margin-bottom: 8px; }
 .upload-zone p { font-size: 14px; color: #444; }
 .upload-zone span { font-size: 12px; color: #888; }
-#preview-img { max-width: 100%; max-height: 180px; border-radius: 8px; margin-top: 0.75rem; display: none; object-fit: contain; }
+#preview-container { text-align: center; margin-top: 0.75rem; display: none; }
+#preview-img { max-width: 100%; max-height: 180px; border-radius: 8px; display: none; object-fit: contain; margin: 0 auto; }
+#preview-pdf { display: none; background: #f4f4f2; border: 1px solid #ddd; border-radius: 8px; padding: 15px; text-align: center; color: #c62828; font-weight: 600; font-size: 14px; }
 .thumb-status { font-size: 11px; color: #1a5c1a; margin-top: 4px; display: none; }
 .field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .field-wrap { display: flex; flex-direction: column; gap: 4px; }
@@ -68,7 +70,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .item-sgd { font-size: 14px; font-weight: 600; color: #1a5c1a; }
 .item-del { background: none; border: none; color: #ccc; cursor: pointer; font-size: 20px; padding: 0 4px; flex-shrink: 0; line-height: 1; }
 .item-del:hover { color: #c62828; }
-.receipt-thumb { width: 32px; height: 32px; border-radius: 6px; object-fit: cover; flex-shrink: 0; border: 1px solid #e0e0e0; }
+.receipt-thumb { width: 32px; height: 32px; border-radius: 6px; object-fit: cover; flex-shrink: 0; border: 1px solid #e0e0e0; display: flex; align-items: center; justify-content: center; background: #f9f9f9; font-size: 11px; }
 .total-row { padding: 0.875rem 1rem; background: #f0f8f0; display: flex; justify-content: space-between; align-items: center; border-top: 2px solid #c8d8c8; }
 .total-label { font-size: 14px; font-weight: 600; color: #1a5c1a; }
 .total-amount { font-size: 20px; font-weight: 700; color: #1a5c1a; }
@@ -87,7 +89,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
     <p>Redington ASEAN · Ivan Ong</p>
   </div>
   <div class="pv-badge" id="pv-badge">PV5</div>
-  <div style="font-size:10px;opacity:0.6;">v11</div>
+  <div style="font-size:10px;opacity:0.6;">v12</div>
 </div>
 
 <div class="container">
@@ -127,9 +129,12 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         <p>Tap to upload receipt photo or PDF</p>
         <span>JPG, PNG, PDF supported</span>
       </label>
-      <img id="preview-img" alt="Receipt preview">
+      <div id="preview-container">
+        <img id="preview-img" alt="Receipt preview">
+        <div id="preview-pdf">📄 PDF Document Attached</div>
+      </div>
       <textarea id="thumb-store" style="display:none;"></textarea>
-      <div class="thumb-status" id="thumb-status">✓ Image ready to attach</div>
+      <div class="thumb-status" id="thumb-status">✓ File ready to attach</div>
       <div class="btn-row" id="extract-row" style="display:none;">
         <button class="btn primary" id="extract-btn" onclick="extractReceipt()">✨ Extract details</button>
         <button class="btn" onclick="clearReceipt()">✕ Clear</button>
@@ -208,7 +213,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
       <h2>Generate Payment Voucher PDF</h2>
     </div>
     <div class="card-body">
-      <p style="font-size:13px;color:#666;margin-bottom:0.75rem;">Downloads a PDF with all line items + receipt images attached.</p>
+      <p style="font-size:13px;color:#666;margin-bottom:0.75rem;">Downloads a PDF with all line items + receipt images/files attached.</p>
       <div class="btn-row">
         <button class="btn success" id="pdf-btn" onclick="generatePDF()">📄 Download PDF Voucher</button>
         <button class="btn danger" onclick="clearAll()">🗑 Clear All</button>
@@ -233,7 +238,6 @@ let pendingThumb = null;  // NEVER cleared until addItem() completes
 
 // Items: stored in memory with thumbs; localStorage has text only
 let items = JSON.parse(localStorage.getItem('pv_items') || '[]');
-// items loaded from localStorage won't have thumbs — that's expected
 
 updatePVMeta();
 fetchRates();
@@ -272,7 +276,6 @@ function updateSGD() {
     cur !== 'SGD' && rates[cur] ? 'Rate: 1 ' + cur + ' = SGD ' + rates[cur].toFixed(6) : '';
 }
 
-// Compress image using canvas — returns a Promise<dataURL>
 function compressImage(dataUrl) {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -286,72 +289,60 @@ function compressImage(dataUrl) {
       const canvas = document.createElement('canvas');
       canvas.width = w; canvas.height = h;
       canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-      resolve(canvas.toDataURL('image/jpeg', 0.80));
+      resolve(canvas.toToDataURL('image/jpeg', 0.80));
     };
     img.onerror = reject;
     img.src = dataUrl;
   });
 }
 
-function setThumb(dataUrl) {
-  // Single function to set thumb in ALL stores at once
+function setThumb(dataUrl, isPDF = false) {
   currentThumb = dataUrl;
   pendingThumb = dataUrl;
   const ta = document.getElementById('thumb-store');
   if (ta) ta.value = dataUrl;
   thumbReady = true;
-  console.log('setThumb: stored', dataUrl ? dataUrl.length : 0, 'chars in all stores');
-  document.getElementById('thumb-status').style.display = dataUrl ? 'block' : 'none';
-  document.getElementById('thumb-status').textContent = dataUrl
-    ? '✓ Image ready (' + Math.round(dataUrl.length/1024) + ' KB)'
-    : '';
+  
+  const statusEl = document.getElementById('thumb-status');
+  statusEl.style.display = dataUrl ? 'block' : 'none';
+  if (dataUrl) {
+    statusEl.textContent = isPDF 
+      ? '📄 PDF ready to attach' 
+      : '✓ Image ready (' + Math.round(dataUrl.length/1024) + ' KB)';
+  }
 }
 
 function handleReceipt(input) {
   const file = input.files[0];
   if (!file) return;
   currentMime = file.type || 'image/jpeg';
-  // Reset all stores
+  
+  // Reset all temporary containers
   currentThumb = null; pendingThumb = null; thumbReady = false;
-  const ta = document.getElementById('thumb-store');
-  if (ta) ta.value = '';
+  document.getElementById('thumb-store').value = '';
   document.getElementById('thumb-status').style.display = 'none';
-  const tsClear = document.getElementById('thumb-store');
-  if (tsClear) tsClear.value = '';
+  document.getElementById('preview-container').style.display = 'block';
 
   const reader = new FileReader();
   reader.onload = (e) => {
     const dataUrl = e.target.result;
-    console.log('reader.onload fired, file.type:', file.type, 'dataUrl len:', dataUrl.length);
     currentBase64 = dataUrl.split(',')[1];
 
-    if (!file.type || file.type.startsWith('image/') || (!file.type.includes('pdf') && dataUrl.startsWith('data:image'))) {
+    if (currentMime === 'application/pdf') {
+      document.getElementById('preview-img').style.display = 'none';
+      document.getElementById('preview-pdf').style.display = 'block';
+      setThumb(dataUrl, true);
+    } else {
+      document.getElementById('preview-pdf').style.display = 'none';
       document.getElementById('preview-img').src = dataUrl;
       document.getElementById('preview-img').style.display = 'block';
-      // Set thumb immediately with original (synchronous)
-      console.log('About to call setThumb with len:', dataUrl.length);
-      setThumb(dataUrl);
-      // Then try to compress in background (non-blocking, updates if succeeds)
+      
+      setThumb(dataUrl, false);
       compressImage(dataUrl).then(compressed => {
-        setThumb(compressed);
-        console.log('Compression done, updated to', compressed.length, 'chars');
+        setThumb(compressed, false);
       }).catch(err => {
-        console.warn('Compression failed, keeping original:', err.message);
+        console.warn('Compression skipped/failed, keeping original content.');
       });
-    } else if (file.type === 'application/pdf') {
-      // Store PDF dataUrl for attachment
-      const pdfDataUrl = dataUrl;
-      currentThumb = pdfDataUrl;
-      pendingThumb = pdfDataUrl;
-      const ta = document.getElementById('thumb-store');
-      if (ta) ta.value = pdfDataUrl;
-      thumbReady = true;
-      document.getElementById('preview-img').style.display = 'none';
-      document.getElementById('thumb-status').style.display = 'block';
-      document.getElementById('thumb-status').textContent = '📄 PDF ready to attach';
-      console.log('PDF stored as thumb, len:', pdfDataUrl.length);
-    } else {
-      currentThumb = null; pendingThumb = null; thumbReady = true;
     }
     document.getElementById('extract-row').style.display = 'flex';
     hideStatus('extract-status');
@@ -363,12 +354,24 @@ function clearReceipt() {
   currentBase64 = null;
   currentThumb = null;
   thumbReady = false;
-  // NOTE: pendingThumb and thumb-store NOT cleared here — addItem() needs them
   document.getElementById('receipt-input').value = '';
   document.getElementById('preview-img').style.display = 'none';
+  document.getElementById('preview-pdf').style.display = 'none';
+  document.getElementById('preview-container').style.display = 'none';
   document.getElementById('thumb-status').style.display = 'none';
   document.getElementById('extract-row').style.display = 'none';
   hideStatus('extract-status');
+}
+
+function showStatus(id, text, type) {
+  const el = document.getElementById(id);
+  el.className = 'status ' + type;
+  el.textContent = text;
+  el.style.display = 'block';
+}
+
+function hideStatus(id) {
+  document.getElementById(id).style.display = 'none';
 }
 
 async function extractReceipt() {
@@ -406,33 +409,22 @@ async function extractReceipt() {
     if (!resp.ok) throw new Error('API error ' + resp.status);
     const data = await resp.json();
     const text = (data.content || []).map(b => b.text || '').join('');
-    console.log('Extracted text:', text.substring(0, 300));
 
-    // Strip markdown fences and parse
-    const clean = text.replace(/```json|```/gi, '').trim();
+    const clean = text.replace(/```json|
+```/gi, '').trim();
     let parsed;
     try { parsed = JSON.parse(clean); } 
-    catch(e) { throw new Error('Could not parse AI response: ' + text.substring(0, 80)); }
+    catch(e) { throw new Error('Could not parse AI response'); }
 
-    // Handle both array (multiple items) and single object
     const jsonItems = Array.isArray(parsed) ? parsed : [parsed];
-    console.log('Parsed', jsonItems.length, 'item(s):', jsonItems);
-
     const validCur = ['SGD','IDR','THB','MYR','PHP','VND','USD'];
 
-    // Always merge into a single line item (sum amounts if array)
-    let j;
-    if (jsonItems.length === 1) {
-      j = jsonItems[0];
-    } else {
-      // Sum all amounts into one item
+    let j = jsonItems[0];
+    if (jsonItems.length > 1) {
       const cur = ((jsonItems[0].currency || 'SGD') + '').toUpperCase();
       const totalAmt = jsonItems.reduce((s, x) => s + (parseFloat(x.amount) || 0), 0);
-      // Build description with date range
       const firstDate = jsonItems[0].date || '';
-      const lastDate = jsonItems[jsonItems.length-1].date || '';
-      const dateRange = firstDate === lastDate ? firstDate : firstDate + ' – ' + lastDate;
-      const desc = jsonItems[0].description + (jsonItems.length > 1 ? ' (' + jsonItems.length + ' nights)' : '');
+      const desc = jsonItems[0].description + ' (' + jsonItems.length + ' nights merged)';
       j = {
         description: desc,
         date: firstDate,
@@ -440,22 +432,21 @@ async function extractReceipt() {
         currency: validCur.includes(cur) ? cur : 'SGD',
         reference: jsonItems[0].reference || ''
       };
-      console.log('Merged', jsonItems.length, 'items into one:', j);
     }
 
-    // Fill form with single item
     document.getElementById('f-desc').value = j.description || '';
     document.getElementById('f-date').value = j.date || '';
     document.getElementById('f-amount').value = j.amount || '';
     document.getElementById('f-ref').value = j.reference || '';
     const cur = ((j.currency || 'SGD') + '').toUpperCase();
     document.getElementById('f-currency').value = validCur.includes(cur) ? cur : 'SGD';
+    
     updateSGD();
     document.getElementById('item-form-card').style.display = 'block';
     document.getElementById('item-form-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
-    showStatus('extract-status', '✓ Extracted' + (jsonItems.length > 1 ? ' (' + jsonItems.length + ' nights merged into 1 item)' : '') + ' — review below', 'success');
+    showStatus('extract-status', '✓ Extracted details successfully — review below', 'success');
   } catch(e) {
-    showStatus('extract-status', 'Extraction failed: ' + e.message + '. Fill in manually below.', 'error');
+    showStatus('extract-status', 'Extraction parsing failed. Please complete details manually.', 'error');
     document.getElementById('item-form-card').style.display = 'block';
   }
   btn.disabled = false;
@@ -474,30 +465,25 @@ function addItem() {
 
   const sgd = amount * (rates[currency] || 1);
 
-  // Read thumb from all stores - use whichever is available
   const thumbEl = document.getElementById('thumb-store');
   const taVal = thumbEl && thumbEl.value && thumbEl.value.startsWith('data:') ? thumbEl.value : null;
   const thumbSnapshot = taVal || pendingThumb || currentThumb || null;
-  console.log('addItem: textarea=', !!taVal, 'pendingThumb=', !!pendingThumb, 'final=', !!thumbSnapshot, 'len=', thumbSnapshot ? thumbSnapshot.length : 0);
 
   const item = {
     id: Date.now(),
     desc, date, currency, amount, ref, sgd,
     rate: rates[currency] || 1,
-    thumb: thumbSnapshot
+    thumb: thumbSnapshot,
+    isPDF: thumbSnapshot ? thumbSnapshot.startsWith('data:application/pdf') : false
   };
-
-  console.log('addItem: item.thumb=', !!item.thumb, item.thumb ? item.thumb.length : 0);
 
   items.push(item);
   pendingThumb = null;
-  // Clear DOM store after capture
-  const ts = document.getElementById('thumb-store');
-  if (ts) { ts.value = ''; }
+  if (document.getElementById('thumb-store')) { document.getElementById('thumb-store').value = ''; }
+  
   saveItems();
   renderItems();
 
-  // Reset
   ['f-desc','f-date','f-amount','f-ref'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('f-currency').value = 'SGD';
   document.getElementById('sgd-preview').textContent = 'S$ —';
@@ -519,12 +505,11 @@ function deleteItem(id) {
 }
 
 function saveItems() {
-  // Save text data only — strip thumbs to avoid localStorage quota
   try {
     localStorage.setItem('pv_items', JSON.stringify(
       items.map(({ thumb, ...rest }) => rest)
     ));
-  } catch(e) { console.warn('localStorage save failed', e); }
+  } catch(e) { console.warn('localStorage quota footprint warning'); }
 }
 
 function renderItems() {
@@ -540,11 +525,19 @@ function renderItems() {
   }
 
   countEl.textContent = items.length + ' item' + (items.length !== 1 ? 's' : '');
-  list.innerHTML = items.map((item, i) => `
+  list.innerHTML = items.map((item, i) => {
+    let visualComponent = `<div class="item-num">${i+1}</div>`;
+    if (item.thumb) {
+      if (item.isPDF) {
+        visualComponent = `<div class="receipt-thumb" style="color:#c62828; font-weight:bold;">PDF</div>`;
+      } else {
+        visualComponent = `<img src="${item.thumb}" class="receipt-thumb" alt="receipt">`;
+      }
+    }
+
+    return `
     <div class="item-row">
-      ${item.thumb
-        ? `<img src="${item.thumb}" class="receipt-thumb" alt="receipt" title="Image: ${item.thumb ? item.thumb.length : 0} chars">`
-        : `<div class="item-num" title="No image stored">${i+1}</div>`}
+      ${visualComponent}
       <div class="item-detail">
         <div class="item-desc">${item.desc}</div>
         <div class="item-meta">${item.date || ''}${item.ref ? ' · ' + item.ref : ''}</div>
@@ -554,7 +547,8 @@ function renderItems() {
         <div class="item-sgd">S$${item.sgd.toFixed(2)}</div>
       </div>
       <button class="item-del" onclick="deleteItem(${item.id})">×</button>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 
   const total = items.reduce((s, i) => s + i.sgd, 0);
   document.getElementById('total-amount').textContent = 'S$' + total.toFixed(2);
@@ -689,99 +683,52 @@ async function generatePDF() {
     doc.setDrawColor(180,180,180); doc.setLineWidth(0.4);
     const sigW = contentW/2 - 14;
     [margin, margin+contentW/2+10].forEach((sx, i) => {
-      doc.setTextColor(30,30,30); doc.setFont('helvetica','bold'); doc.setFontSize(9);
-      doc.text(['Prepared By','Approved By'][i], sx, y);
-      doc.line(sx, y+17, sx+sigW, y+17);
-      doc.setFont('helvetica','normal'); doc.setFontSize(8);
-      doc.text(['Ivan Ong','Prabhu K'][i], sx, y+22);
-      doc.text('Date: ___________', sx, y+28);
+      doc.line(sx, y, sx+sigW, y);
+      doc.setTextColor(60,60,60); doc.setFontSize(8); doc.setFont('helvetica', 'normal');
+      doc.text(i === 0 ? 'Submitted By (Ivan Ong)' : 'Approved By', sx, y + 4);
     });
 
-    // Footer
-    doc.setFillColor(240,248,240); doc.rect(0,H-10,W,10,'F');
-    doc.setTextColor(100,140,100); doc.setFontSize(7.5); doc.setFont('helvetica','normal');
-    doc.text(pvNum+' · '+pvMonth+' · Generated '+new Date().toLocaleDateString('en-SG')+' · Redington Distribution Pte Ltd', W/2, H-4, {align:'center'});
+    // Append Receipts (Images & PDFs)
+    items.forEach((item, idx) => {
+      if (item.thumb) {
+        doc.addPage();
+        // Page break title header
+        doc.setFillColor(240, 245, 240); doc.rect(0, 0, W, 20, 'F');
+        doc.setTextColor(26, 92, 26); doc.setFontSize(10); doc.setFont('helvetica', 'bold');
+        doc.text(`RECEIPT ATTACHMENT FOR ITEM #${idx + 1}`, margin, 12);
+        doc.setFontSize(8); doc.setFont('helvetica', 'normal'); doc.setTextColor(100, 100, 100);
+        doc.text(item.desc, margin, 16);
 
-    // ── Receipt pages ──
-    const withThumbs = items.filter(i => i.thumb);
-    console.log('Receipt pages to add:', withThumbs.length, 'of', items.length, 'items');
-
-    for (let i = 0; i < withThumbs.length; i++) {
-      const item = withThumbs[i];
-      const isPDF = item.thumb.startsWith('data:application/pdf');
-      const isImage = item.thumb.startsWith('data:image');
-      doc.addPage();
-
-      // Header
-      doc.setFillColor(26,92,26); doc.rect(0,0,W,16,'F');
-      doc.setTextColor(255,255,255); doc.setFontSize(9); doc.setFont('helvetica','bold');
-      doc.text('Receipt '+(i+1)+' of '+withThumbs.length+' — '+pvNum, margin, 7);
-      doc.setFont('helvetica','normal'); doc.setFontSize(8);
-      doc.text((item.desc||'').substring(0,70), margin, 13);
-
-      // Meta bar
-      doc.setTextColor(30,30,30); doc.setFontSize(8);
-      const amt = item.currency!=='SGD'
-        ? item.currency+' '+Number(item.amount).toLocaleString()+' = S$'+item.sgd.toFixed(2)
-        : 'S$'+item.sgd.toFixed(2);
-      doc.setFont('helvetica','bold'); doc.text('Date:', margin, 23);
-      doc.setFont('helvetica','normal'); doc.text(item.date||'—', margin+11, 23);
-      doc.setFont('helvetica','bold'); doc.text('Amount:', margin+55, 23);
-      doc.setFont('helvetica','normal'); doc.text(amt, margin+73, 23);
-      if (item.ref) {
-        doc.setFont('helvetica','bold'); doc.text('Ref:', margin+140, 23);
-        doc.setFont('helvetica','normal'); doc.text(String(item.ref).substring(0,14), margin+150, 23);
-      }
-      doc.setDrawColor(180,180,180); doc.setLineWidth(0.3);
-      doc.line(margin, 26, W-margin, 26);
-
-      if (isImage) {
-        try {
-          const imgType = item.thumb.includes('image/png') ? 'PNG' : 'JPEG';
-          doc.addImage(item.thumb, imgType, margin, 30, contentW, 0);
-          console.log('Receipt', i+1, 'image added OK');
-        } catch(e) {
-          console.error('Receipt', i+1, 'addImage error:', e.message);
-          doc.setTextColor(150,150,150); doc.setFontSize(10);
-          doc.text('Image render error: '+e.message, margin, 60);
+        if (item.isPDF) {
+          // Since standard client-side jsPDF cannot parse external raw binary PDF pages without heavy libraries,
+          // it prints an clean placeholder reference link indicating the document contains an external PDF attachment.
+          doc.setDrawColor(200, 200, 200); doc.setFillColor(249, 249, 249);
+          doc.rect(margin, 30, contentW, 40, 'FD');
+          doc.setTextColor(198, 40, 40); doc.setFontSize(11); doc.setFont('helvetica', 'bold');
+          doc.text("🔗 Embedded PDF Receipt", margin + 5, 42);
+          doc.setTextColor(30, 30, 30); doc.setFontSize(9); doc.setFont('helvetica', 'normal');
+          doc.text("This expense item contains an associated digital PDF attachment.", margin + 5, 50);
+          doc.setTextColor(26, 92, 26);
+          doc.text("Click here to view/open raw resource data link directly", margin + 5, 58, { url: item.thumb });
+        } else {
+          try {
+            const format = item.thumb.includes('png') ? 'PNG' : 'JPEG';
+            doc.addImage(item.thumb, format, margin, 26, contentW, 160, undefined, 'FAST');
+          } catch (imgErr) {
+            doc.text("[Image render error — unsupported structural compression type]", margin, 35);
+          }
         }
-      } else if (isPDF) {
-        // PDF receipt - show note (jsPDF cannot embed PDFs as pages)
-        doc.setFillColor(245,250,245);
-        doc.rect(margin, 35, contentW, 40, 'F');
-        doc.setDrawColor(26,92,26); doc.setLineWidth(0.5);
-        doc.rect(margin, 35, contentW, 40, 'S');
-        doc.setTextColor(26,92,26); doc.setFontSize(11); doc.setFont('helvetica','bold');
-        doc.text('PDF Receipt Attached', margin+6, 48);
-        doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(60,60,60);
-        doc.text('The original PDF receipt file should be attached to this claim.', margin+6, 57);
-        doc.text('All details are captured in the summary above.', margin+6, 65);
       }
+    });
 
-      // Footer
-      doc.setFillColor(240,248,240); doc.rect(0,H-10,W,10,'F');
-      doc.setTextColor(100,140,100); doc.setFontSize(7.5); doc.setFont('helvetica','normal');
-      doc.text(pvNum+' · Receipt '+(i+1)+': '+(item.desc||'').substring(0,55), W/2, H-4, {align:'center'});
-    }
-
-    const fname = pvNum+'_Ivan_Ong_'+pvMonth.replace(' ','_')+'.pdf';
-    doc.save(fname);
-    showStatus('pdf-status', '✓ '+fname+' downloaded! ('+items.length+' items, '+withThumbs.length+' receipt images)', 'success');
+    doc.save(`PV_Voucher_${pvNum || 'Export'}.pdf`);
+    showStatus('pdf-status', '✓ PDF Voucher generated successfully!', 'success');
   } catch(e) {
-    console.error('PDF error:', e);
-    showStatus('pdf-status', 'PDF error: '+e.message, 'error');
+    console.error(e);
+    showStatus('pdf-status', 'Generation error: ' + e.message, 'error');
   }
   btn.disabled = false;
   btn.innerHTML = '📄 Download PDF Voucher';
-}
-
-function showStatus(id, msg, type) {
-  const el = document.getElementById(id);
-  el.textContent = msg; el.className = 'status '+type; el.style.display = 'block';
-}
-function hideStatus(id) {
-  const el = document.getElementById(id);
-  if (el) { el.style.display = 'none'; el.className = 'status'; }
 }
 </script>
 </body>
