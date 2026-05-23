@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="PV Expense">
 <title>PV Expense App – Redington ASEAN</title>
-<!-- v10 -->
+<!-- v11 -->
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f0f4f0; min-height: 100vh; }
@@ -87,7 +87,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
     <p>Redington ASEAN · Ivan Ong</p>
   </div>
   <div class="pv-badge" id="pv-badge">PV5</div>
-  <div style="font-size:10px;opacity:0.6;">v10</div>
+  <div style="font-size:10px;opacity:0.6;">v11</div>
 </div>
 
 <div class="container">
@@ -746,17 +746,16 @@ async function generatePDF() {
           doc.text('Image render error: '+e.message, margin, 60);
         }
       } else if (isPDF) {
-        // PDF receipts: show note and reference info
-        doc.setTextColor(80,80,80); doc.setFontSize(11); doc.setFont('helvetica','bold');
-        doc.text('📄 PDF Receipt', margin, 50);
-        doc.setFont('helvetica','normal'); doc.setFontSize(9);
-        doc.text('This receipt was submitted as a PDF document.', margin, 60);
-        doc.text('Please refer to the original PDF file for the full receipt.', margin, 68);
-        doc.setFontSize(8); doc.setTextColor(120,120,120);
-        doc.text('Description: '+(item.desc||''), margin, 82);
-        doc.text('Date: '+(item.date||''), margin, 90);
-        doc.text('Amount: '+amt, margin, 98);
-        if (item.ref) doc.text('Reference: '+item.ref, margin, 106);
+        // PDF receipt - show note (jsPDF cannot embed PDFs as pages)
+        doc.setFillColor(245,250,245);
+        doc.rect(margin, 35, contentW, 40, 'F');
+        doc.setDrawColor(26,92,26); doc.setLineWidth(0.5);
+        doc.rect(margin, 35, contentW, 40, 'S');
+        doc.setTextColor(26,92,26); doc.setFontSize(11); doc.setFont('helvetica','bold');
+        doc.text('PDF Receipt Attached', margin+6, 48);
+        doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(60,60,60);
+        doc.text('The original PDF receipt file should be attached to this claim.', margin+6, 57);
+        doc.text('All details are captured in the summary above.', margin+6, 65);
       }
 
       // Footer
