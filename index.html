@@ -289,42 +289,53 @@ function compressImage(dataUrl) {
   });
 }
 
+function setThumb(dataUrl) {
+  // Single function to set thumb in ALL stores at once
+  currentThumb = dataUrl;
+  pendingThumb = dataUrl;
+  const ta = document.getElementById('thumb-store');
+  if (ta) ta.value = dataUrl;
+  thumbReady = true;
+  console.log('setThumb: stored', dataUrl ? dataUrl.length : 0, 'chars in all stores');
+  document.getElementById('thumb-status').style.display = dataUrl ? 'block' : 'none';
+  document.getElementById('thumb-status').textContent = dataUrl
+    ? '✓ Image ready (' + Math.round(dataUrl.length/1024) + ' KB)'
+    : '';
+}
+
 function handleReceipt(input) {
   const file = input.files[0];
   if (!file) return;
   currentMime = file.type || 'image/jpeg';
-  currentThumb = null;
-  thumbReady = false;
+  // Reset all stores
+  currentThumb = null; pendingThumb = null; thumbReady = false;
+  const ta = document.getElementById('thumb-store');
+  if (ta) ta.value = '';
   document.getElementById('thumb-status').style.display = 'none';
+  const tsClear = document.getElementById('thumb-store');
+  if (tsClear) tsClear.value = '';
 
   const reader = new FileReader();
-  reader.onload = async (e) => {
+  reader.onload = (e) => {
     const dataUrl = e.target.result;
     currentBase64 = dataUrl.split(',')[1];
 
     if (file.type.startsWith('image/')) {
       document.getElementById('preview-img').src = dataUrl;
       document.getElementById('preview-img').style.display = 'block';
-      // Compress async — set flag when done
-      try {
-        currentThumb = await compressImage(dataUrl);
-        thumbReady = true;
-        document.getElementById('thumb-status').style.display = 'block';
-        console.log('Thumb ready, size:', currentThumb.length);
-      } catch(err) {
-        // Fallback: use original dataUrl
-        currentThumb = dataUrl;
-        pendingThumb = currentThumb;
-        thumbReady = true;
-        console.warn('Compression failed, using original');
-      }
+      // Set thumb immediately with original (synchronous)
+      setThumb(dataUrl);
+      // Then try to compress in background (non-blocking, updates if succeeds)
+      compressImage(dataUrl).then(compressed => {
+        setThumb(compressed);
+        console.log('Compression done, updated to', compressed.length, 'chars');
+      }).catch(err => {
+        console.warn('Compression failed, keeping original:', err.message);
+      });
     } else {
-      // PDF: no thumbnail
-      currentThumb = null;
-      thumbReady = true;
+      currentThumb = null; pendingThumb = null; thumbReady = true;
       document.getElementById('preview-img').style.display = 'none';
     }
-
     document.getElementById('extract-row').style.display = 'flex';
     hideStatus('extract-status');
   };
@@ -446,11 +457,11 @@ function addItem() {
 
   const sgd = amount * (rates[currency] || 1);
 
-  // Read thumb from DOM element (most reliable storage)
+  // Read thumb from all stores - use whichever is available
   const thumbEl = document.getElementById('thumb-store');
-  const domThumb = thumbEl && thumbEl.value && thumbEl.value.startsWith('data:image') ? thumbEl.value : null;
-  const thumbSnapshot = domThumb || pendingThumb || currentThumb || null;
-  console.log('addItem: domThumb=', !!domThumb, 'pendingThumb=', !!pendingThumb, 'final=', !!thumbSnapshot, 'len=', thumbSnapshot ? thumbSnapshot.length : 0);
+  const taVal = thumbEl && thumbEl.value && thumbEl.value.startsWith('data:') ? thumbEl.value : null;
+  const thumbSnapshot = taVal || pendingThumb || currentThumb || null;
+  console.log('addItem: textarea=', !!taVal, 'pendingThumb=', !!pendingThumb, 'final=', !!thumbSnapshot, 'len=', thumbSnapshot ? thumbSnapshot.length : 0);
 
   const item = {
     id: Date.now(),
