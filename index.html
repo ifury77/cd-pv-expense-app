@@ -7,6 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="PV Expense">
 <title>PV Expense App – Redington ASEAN</title>
+<!-- v8 -->
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f0f4f0; min-height: 100vh; }
@@ -391,57 +392,40 @@ async function extractReceipt() {
 
     const validCur = ['SGD','IDR','THB','MYR','PHP','VND','USD'];
 
+    // Always merge into a single line item (sum amounts if array)
+    let j;
     if (jsonItems.length === 1) {
-      // Single item — fill form as before
-      const j = jsonItems[0];
-      document.getElementById('f-desc').value = j.description || '';
-      document.getElementById('f-date').value = j.date || '';
-      document.getElementById('f-amount').value = j.amount || '';
-      document.getElementById('f-ref').value = j.reference || '';
-      const cur = ((j.currency || 'SGD') + '').toUpperCase();
-      document.getElementById('f-currency').value = validCur.includes(cur) ? cur : 'SGD';
-      updateSGD();
-      document.getElementById('item-form-card').style.display = 'block';
-      document.getElementById('item-form-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
-      showStatus('extract-status', '✓ Extracted — review below then click Add to Voucher', 'success');
+      j = jsonItems[0];
     } else {
-      // Multiple items (e.g. multi-night hotel) — add all at once
-      const rate = rates;
-      let addedCount = 0;
-      // Get thumb from all possible sources
-      const tsEl = document.getElementById('thumb-store');
-      const domSrc = tsEl && tsEl.getAttribute('data-ready')==='1' && tsEl.src && tsEl.src.startsWith('data:') ? tsEl.src : null;
-      const thumbSnap = domSrc || pendingThumb || currentThumb || null;
-      console.log('Multi-item thumb: domSrc=',!!domSrc,'pendingThumb=',!!pendingThumb,'final=',!!thumbSnap);
-      jsonItems.forEach((j, idx) => {
-        const cur = ((j.currency || 'SGD') + '').toUpperCase();
-        const currency = validCur.includes(cur) ? cur : 'SGD';
-        const amount = parseFloat(j.amount) || 0;
-        if (!amount) return;
-        const sgd = amount * (rates[currency] || 1);
-        const item = {
-          id: Date.now() + idx,
-          desc: j.description || '',
-          date: j.date || '',
-          currency, amount,
-          ref: j.reference || '',
-          sgd,
-          rate: rates[currency] || 1,
-          thumb: idx === 0 ? thumbSnap : null  // attach image to first item only
-        };
-        items.push(item);
-        addedCount++;
-      });
-      pendingThumb = null;
-      const ts = document.getElementById('thumb-store');
-      if (ts) { ts.src = ''; ts.removeAttribute('data-ready'); }
-      saveItems();
-      renderItems();
-      clearReceipt();
-      hideStatus('extract-status');
-      document.getElementById('item-form-card').style.display = 'none';
-      showStatus('extract-status', '✓ Added ' + addedCount + ' items automatically from this receipt!', 'success');
+      // Sum all amounts into one item
+      const cur = ((jsonItems[0].currency || 'SGD') + '').toUpperCase();
+      const totalAmt = jsonItems.reduce((s, x) => s + (parseFloat(x.amount) || 0), 0);
+      // Build description with date range
+      const firstDate = jsonItems[0].date || '';
+      const lastDate = jsonItems[jsonItems.length-1].date || '';
+      const dateRange = firstDate === lastDate ? firstDate : firstDate + ' – ' + lastDate;
+      const desc = jsonItems[0].description + (jsonItems.length > 1 ? ' (' + jsonItems.length + ' nights)' : '');
+      j = {
+        description: desc,
+        date: firstDate,
+        amount: Math.round(totalAmt * 100) / 100,
+        currency: validCur.includes(cur) ? cur : 'SGD',
+        reference: jsonItems[0].reference || ''
+      };
+      console.log('Merged', jsonItems.length, 'items into one:', j);
     }
+
+    // Fill form with single item
+    document.getElementById('f-desc').value = j.description || '';
+    document.getElementById('f-date').value = j.date || '';
+    document.getElementById('f-amount').value = j.amount || '';
+    document.getElementById('f-ref').value = j.reference || '';
+    const cur = ((j.currency || 'SGD') + '').toUpperCase();
+    document.getElementById('f-currency').value = validCur.includes(cur) ? cur : 'SGD';
+    updateSGD();
+    document.getElementById('item-form-card').style.display = 'block';
+    document.getElementById('item-form-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    showStatus('extract-status', '✓ Extracted' + (jsonItems.length > 1 ? ' (' + jsonItems.length + ' nights merged into 1 item)' : '') + ' — review below', 'success');
   } catch(e) {
     showStatus('extract-status', 'Extraction failed: ' + e.message + '. Fill in manually below.', 'error');
     document.getElementById('item-form-card').style.display = 'block';
