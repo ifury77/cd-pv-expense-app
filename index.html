@@ -532,7 +532,7 @@ async function generatePDF() {
     doc.setFontSize(16); doc.setFont('helvetica', 'bold');
     doc.text('PAYMENT VOUCHER', margin, 11);
     doc.setFontSize(8); doc.setFont('helvetica', 'normal');
-    doc.text('Redington (India) Ltd – ASEAN  ·  Confidential', margin, 17);
+    doc.text('Redington Distribution Pte Ltd (ASEAN)  ·  Confidential', margin, 17);
     doc.text('Sales Head ASEAN', margin, 22);
 
     const pvNum = document.getElementById('pv-num').value;
@@ -548,7 +548,7 @@ async function generatePDF() {
     const half = contentW / 2;
     const metaRows = [
       ['Voucher No.', pvNum, 'Pay To', 'Ivan Ong'],
-      ['Period', pvMonth, 'Department', 'Redington ASEAN'],
+      ['Period', pvMonth, 'Department', 'Redington Distribution Pte Ltd'],
       ['Date Submitted', new Date().toLocaleDateString('en-SG',{day:'2-digit',month:'long',year:'numeric'}), 'Position', 'Sales Head ASEAN'],
     ];
     metaRows.forEach(([l1,v1,l2,v2]) => {
@@ -638,21 +638,32 @@ async function generatePDF() {
     doc.setFillColor(240,248,240);
     doc.rect(0, H-10, W, 10, 'F');
     doc.setTextColor(100,140,100); doc.setFontSize(7.5); doc.setFont('helvetica','normal');
-    doc.text(`${pvNum} · ${pvMonth} · Generated ${new Date().toLocaleDateString('en-SG')} · Redington ASEAN`, W/2, H-4, {align:'center'});
+    doc.text(pvNum + ' · ' + pvMonth + ' · Generated ' + new Date().toLocaleDateString('en-SG') + ' · Redington Distribution Pte Ltd', W/2, H-4, {align:'center'});
 
     // ── Receipt image pages ──
+    // Pre-load all images to get natural dimensions
     const itemsWithThumbs = items.filter(i => i.thumb && i.thumb.startsWith('data:image'));
-    for (let i = 0; i < itemsWithThumbs.length; i++) {
-      const item = itemsWithThumbs[i];
+
+    // Load all images first
+    const loadedImages = await Promise.all(itemsWithThumbs.map(item => {
+      return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => resolve({ item, img, ok: true });
+        img.onerror = () => resolve({ item, img: null, ok: false });
+        img.src = item.thumb;
+      });
+    }));
+
+    for (let i = 0; i < loadedImages.length; i++) {
+      const { item, img, ok } = loadedImages[i];
       doc.addPage();
 
       // Page header
       doc.setFillColor(26,92,26);
       doc.rect(0, 0, W, 16, 'F');
       doc.setTextColor(255,255,255); doc.setFontSize(9); doc.setFont('helvetica','bold');
-      doc.text(`Receipt ${i+1} of ${itemsWithThumbs.length}`, margin, 7);
+      doc.text('Receipt ' + (i+1) + ' of ' + loadedImages.length, margin, 7);
       doc.setFont('helvetica','normal'); doc.setFontSize(8);
-      // Truncate long desc for header
       const hDesc = item.desc.length > 60 ? item.desc.substring(0,57)+'...' : item.desc;
       doc.text(hDesc, margin, 13);
 
@@ -661,44 +672,43 @@ async function generatePDF() {
       doc.setFont('helvetica','bold'); doc.text('Date:', margin, 23);
       doc.setFont('helvetica','normal'); doc.text(item.date||'—', margin+12, 23);
       doc.setFont('helvetica','bold'); doc.text('Amount:', margin+50, 23);
-      const dispAmt = item.currency!=='SGD' ? `${item.currency} ${Number(item.amount).toLocaleString()} (S$${item.sgd.toFixed(2)})` : `S$${item.sgd.toFixed(2)}`;
+      const dispAmt = item.currency!=='SGD'
+        ? item.currency + ' ' + Number(item.amount).toLocaleString() + ' (S$' + item.sgd.toFixed(2) + ')'
+        : 'S$' + item.sgd.toFixed(2);
       doc.setFont('helvetica','normal'); doc.text(dispAmt, margin+68, 23);
       if(item.ref) {
         doc.setFont('helvetica','bold'); doc.text('Ref:', margin+130, 23);
-        doc.setFont('helvetica','normal'); doc.text(item.ref, margin+140, 23);
+        doc.setFont('helvetica','normal'); doc.text(String(item.ref).substring(0,15), margin+140, 23);
       }
       doc.setDrawColor(200,200,200); doc.setLineWidth(0.3);
       doc.line(margin, 26, W-margin, 26);
 
-      // Image — fit to page with max height
-      try {
-        const mime = item.thumb.split(';')[0].split(':')[1];
-        const imgType = mime.includes('png') ? 'PNG' : 'JPEG';
-        // Get image dimensions to maintain aspect ratio
-        const imgEl = new Image();
-        await new Promise(resolve => {
-          imgEl.onload = resolve;
-          imgEl.src = item.thumb;
-        });
-        const imgNatW = imgEl.naturalWidth;
-        const imgNatH = imgEl.naturalHeight;
-        const maxW = contentW;
-        const maxH = H - 44; // leave room for header and footer
-        let drawW = maxW;
-        let drawH = (imgNatH / imgNatW) * drawW;
-        if (drawH > maxH) { drawH = maxH; drawW = (imgNatW / imgNatH) * drawH; }
-        const imgX = margin + (contentW - drawW) / 2;
-        doc.addImage(item.thumb, imgType, imgX, 30, drawW, drawH, '', 'FAST');
-      } catch(e) { 
+      // Draw image
+      if (ok && img) {
+        try {
+          const mime = item.thumb.split(';')[0].split(':')[1];
+          const imgType = mime.includes('png') ? 'PNG' : 'JPEG';
+          const maxW = contentW;
+          const maxH = H - 46;
+          let drawW = maxW;
+          let drawH = (img.naturalHeight / img.naturalWidth) * drawW;
+          if (drawH > maxH) { drawH = maxH; drawW = (img.naturalWidth / img.naturalHeight) * drawH; }
+          const imgX = margin + (contentW - drawW) / 2;
+          doc.addImage(img, imgType, imgX, 30, drawW, drawH, 'receipt_'+i, 'FAST');
+        } catch(e) {
+          doc.setTextColor(150,150,150); doc.setFontSize(10);
+          doc.text('[Image render error: ' + e.message + ']', W/2, H/2, {align:'center'});
+        }
+      } else {
         doc.setTextColor(150,150,150); doc.setFontSize(10);
-        doc.text('[Receipt image could not be rendered]', W/2, H/2, {align:'center'});
+        doc.text('[Receipt image could not be loaded]', W/2, H/2, {align:'center'});
       }
 
       // Page footer
       doc.setFillColor(240,248,240);
       doc.rect(0, H-10, W, 10, 'F');
       doc.setTextColor(100,140,100); doc.setFontSize(7.5); doc.setFont('helvetica','normal');
-      doc.text(`${pvNum} · Receipt ${i+1}: ${item.desc.substring(0,50)}`, W/2, H-4, {align:'center'});
+      doc.text(pvNum + ' · Receipt ' + (i+1) + ': ' + item.desc.substring(0,50), W/2, H-4, {align:'center'});
     }
 
     const filename = `${pvNum}_Ivan_Ong_${pvMonth.replace(' ','_')}.pdf`;
