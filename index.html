@@ -376,17 +376,33 @@ async function extractReceipt() {
 
     if (!resp.ok) throw new Error('API error ' + resp.status);
     const data = await resp.json();
+    console.log('API response:', JSON.stringify(data).substring(0, 300));
     const text = (data.content || []).map(b => b.text || '').join('');
-    const json = JSON.parse(text.replace(/```json|```/g, '').trim());
-
-    document.getElementById('f-desc').value = json.description || '';
-    document.getElementById('f-date').value = json.date || '';
-    document.getElementById('f-amount').value = json.amount || '';
-    document.getElementById('f-ref').value = json.reference || '';
-    const cur = (json.currency || 'SGD').toUpperCase();
-    for (let opt of document.getElementById('f-currency').options) {
-      if (opt.value === cur) { document.getElementById('f-currency').value = cur; break; }
+    console.log('Extracted text:', text.substring(0, 200));
+    
+    // More robust JSON extraction
+    let json = {};
+    try {
+      // Try to find JSON object in response
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        json = JSON.parse(jsonMatch[0]);
+      } else {
+        json = JSON.parse(text.replace(/```json|```/g, '').trim());
+      }
+    } catch(parseErr) {
+      console.error('JSON parse error:', parseErr.message, 'text was:', text);
+      throw new Error('Could not parse AI response: ' + text.substring(0, 100));
     }
+
+    console.log('Parsed JSON:', json);
+    document.getElementById('f-desc').value = json.description || json.desc || '';
+    document.getElementById('f-date').value = json.date || '';
+    document.getElementById('f-amount').value = json.amount || json.total || '';
+    document.getElementById('f-ref').value = json.reference || json.ref || '';
+    const cur = ((json.currency || json.Currency || 'SGD') + '').toUpperCase();
+    const validCur = ['SGD','IDR','THB','MYR','PHP','VND','USD'];
+    document.getElementById('f-currency').value = validCur.includes(cur) ? cur : 'SGD';
     updateSGD();
     document.getElementById('item-form-card').style.display = 'block';
     document.getElementById('item-form-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
