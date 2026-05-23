@@ -409,6 +409,7 @@ function addItem() {
 
   // Capture thumb at this exact moment
   const thumbSnapshot = thumbReady ? currentThumb : null;
+  console.log('addItem: thumbReady=', thumbReady, 'currentThumb=', !!currentThumb, 'thumbSnapshot=', !!thumbSnapshot, thumbSnapshot ? thumbSnapshot.substring(0,30) : 'NULL');
 
   const item = {
     id: Date.now(),
@@ -417,7 +418,12 @@ function addItem() {
     thumb: thumbSnapshot
   };
 
-  console.log('addItem: thumb captured =', !!item.thumb, item.thumb ? item.thumb.length : 0);
+  console.log('addItem: item.thumb=', !!item.thumb, item.thumb ? item.thumb.length : 0);
+  // Show alert so we can debug on any device
+  const dbg = 'thumbReady:'+thumbReady+' currentThumb:'+(!!currentThumb)+' snap:'+(!!thumbSnapshot)+' len:'+(thumbSnapshot?thumbSnapshot.length:0);
+  document.getElementById('item-status').textContent = 'Debug: '+dbg;
+  document.getElementById('item-status').className = 'status info';
+  document.getElementById('item-status').style.display = 'block';
 
   items.push(item);
   saveItems();
@@ -429,7 +435,7 @@ function addItem() {
   document.getElementById('sgd-preview').textContent = 'S$ —';
   document.getElementById('item-form-card').style.display = 'none';
   clearReceipt();
-  hideStatus('item-status');
+  // keep item-status visible for debug
   hideStatus('extract-status');
 }
 
@@ -469,8 +475,8 @@ function renderItems() {
   list.innerHTML = items.map((item, i) => `
     <div class="item-row">
       ${item.thumb
-        ? `<img src="${item.thumb}" class="receipt-thumb" alt="receipt">`
-        : `<div class="item-num">${i+1}</div>`}
+        ? `<img src="${item.thumb}" class="receipt-thumb" alt="receipt" title="Image: ${item.thumb ? item.thumb.length : 0} chars">`
+        : `<div class="item-num" title="No image stored">${i+1}</div>`}
       <div class="item-detail">
         <div class="item-desc">${item.desc}</div>
         <div class="item-meta">${item.date || ''}${item.ref ? ' · ' + item.ref : ''}</div>
