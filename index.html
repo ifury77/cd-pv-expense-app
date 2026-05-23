@@ -235,7 +235,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 const WORKER_URL = 'https://bizcard-scanner.sgp69k.workers.dev';
 const CURRENCIES = ['SGD','IDR','THB','MYR','PHP','VND','USD'];
 
+// Items stored without images (to avoid localStorage 5MB limit)
 let items = JSON.parse(localStorage.getItem('pv_items') || '[]');
+// Thumbs stored in memory only (lost on page close, but that's OK)
+let thumbStore = {};
 let rates = {};
 let currentImageBase64 = null;
 let currentImageMime = 'image/jpeg';
@@ -398,11 +401,16 @@ function addItem() {
   const rate = rates[currency] || 1;
   const sgd = amount * rate;
 
+  const itemId = Date.now();
+  // Store thumb in memory (not localStorage - too large)
+  if (currentImageThumb) {
+    thumbStore[itemId] = currentImageThumb;
+  }
   const item = {
-    id: Date.now(),
+    id: itemId,
     desc, date, currency, amount, ref, sgd,
-    rate: rates[currency],
-    thumb: currentImageThumb
+    rate: rates[currency]
+    // thumb NOT stored in localStorage to avoid quota errors
   };
 
   items.push(item);
@@ -449,7 +457,7 @@ function renderItems() {
   
   list.innerHTML = items.map((item, i) => `
     <div class="item-row">
-      ${item.thumb ? `<img src="${item.thumb}" class="receipt-thumb" alt="receipt">` : `<div class="item-num">${i+1}</div>`}
+      ${thumbStore[item.id] ? `<img src="${thumbStore[item.id]}" class="receipt-thumb" alt="receipt">` : `<div class="item-num">${i+1}</div>`}
       <div class="item-detail">
         <div class="item-desc">${item.desc}</div>
         <div class="item-meta">${item.date}${item.ref ? ' · ' + item.ref : ''}</div>
@@ -622,14 +630,15 @@ async function generatePDF() {
     doc.setDrawColor(180,180,180); doc.setLineWidth(0.4);
     doc.setTextColor(30,30,30); doc.setFont('helvetica','bold'); doc.setFontSize(9);
     const sigW = contentW / 3 - 6;
-    const sigPositions = [margin, margin+contentW/3, margin+(contentW/3)*2];
-    const sigLabels = ['Prepared By','Approved By','Acknowledged By'];
-    const sigNames  = ['Ivan Ong','Prabhu K',''];
+    const sigPositions = [margin, margin + contentW/2 + 10];
+    const sigLabels = ['Prepared By', 'Approved By'];
+    const sigNames  = ['Ivan Ong', 'Prabhu K'];
+    const sigLineW  = contentW / 2 - 14;
     sigPositions.forEach((sx,i) => {
       doc.text(sigLabels[i], sx, y);
-      doc.line(sx, y+17, sx+sigW, y+17);
+      doc.line(sx, y+17, sx+sigLineW, y+17);
       doc.setFont('helvetica','normal'); doc.setFontSize(8);
-      if(sigNames[i]) doc.text(sigNames[i], sx, y+22);
+      doc.text(sigNames[i], sx, y+22);
       doc.text('Date: ___________', sx, y+28);
       doc.setFont('helvetica','bold'); doc.setFontSize(9);
     });
@@ -642,7 +651,7 @@ async function generatePDF() {
 
     // ── Receipt image pages ──
     // Pre-load all images to get natural dimensions
-    const itemsWithThumbs = items.filter(i => i.thumb && i.thumb.startsWith('data:image'));
+    const itemsWithThumbs = items.filter(i => thumbStore[i.id] && thumbStore[i.id].startsWith('data:image'));
 
     // Load all images first
     const loadedImages = await Promise.all(itemsWithThumbs.map(item => {
@@ -650,7 +659,7 @@ async function generatePDF() {
         const img = new Image();
         img.onload = () => resolve({ item, img, ok: true });
         img.onerror = () => resolve({ item, img: null, ok: false });
-        img.src = item.thumb;
+        img.src = thumbStore[item.id];
       });
     }));
 
@@ -686,7 +695,7 @@ async function generatePDF() {
       // Draw image
       if (ok && img) {
         try {
-          const mime = item.thumb.split(';')[0].split(':')[1];
+          const mime = thumbStore[item.id].split(';')[0].split(':')[1];
           const imgType = mime.includes('png') ? 'PNG' : 'JPEG';
           const maxW = contentW;
           const maxH = H - 46;
