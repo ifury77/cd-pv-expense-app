@@ -124,7 +124,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         <span>JPG, PNG, PDF supported</span>
       </label>
       <img id="preview-img" alt="Receipt preview">
-      <img id="thumb-store" style="display:none;" src="" alt="">
+      <textarea id="thumb-store" style="display:none;"></textarea>
       <div class="thumb-status" id="thumb-status">✓ Image ready to attach</div>
       <div class="btn-row" id="extract-row" style="display:none;">
         <button class="btn primary" id="extract-btn" onclick="extractReceipt()">✨ Extract details</button>
@@ -335,7 +335,7 @@ function clearReceipt() {
   currentBase64 = null;
   currentThumb = null;
   thumbReady = false;
-  // NOTE: pendingThumb and thumb-store NOT cleared — addItem() needs them
+  // NOTE: pendingThumb and thumb-store NOT cleared here — addItem() needs them
   document.getElementById('receipt-input').value = '';
   document.getElementById('preview-img').style.display = 'none';
   document.getElementById('thumb-status').style.display = 'none';
@@ -448,7 +448,7 @@ function addItem() {
 
   // Read thumb from DOM element (most reliable storage)
   const thumbEl = document.getElementById('thumb-store');
-  const domThumb = thumbEl && thumbEl.getAttribute('data-ready') === '1' && thumbEl.src && thumbEl.src.startsWith('data:image') ? thumbEl.src : null;
+  const domThumb = thumbEl && thumbEl.value && thumbEl.value.startsWith('data:image') ? thumbEl.value : null;
   const thumbSnapshot = domThumb || pendingThumb || currentThumb || null;
   console.log('addItem: domThumb=', !!domThumb, 'pendingThumb=', !!pendingThumb, 'final=', !!thumbSnapshot, 'len=', thumbSnapshot ? thumbSnapshot.length : 0);
 
@@ -465,7 +465,7 @@ function addItem() {
   pendingThumb = null;
   // Clear DOM store after capture
   const ts = document.getElementById('thumb-store');
-  if (ts) { ts.src = ''; ts.removeAttribute('data-ready'); }
+  if (ts) { ts.value = ''; }
   saveItems();
   renderItems();
 
