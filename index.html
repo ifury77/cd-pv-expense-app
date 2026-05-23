@@ -492,201 +492,218 @@ async function generatePDF() {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
     const W = 210, H = 297;
-    const margin = 15;
+    const margin = 14;
     const contentW = W - margin * 2;
+
+    // ── Column definitions (fixed widths, must sum to contentW=182) ──
+    // #(8) | Date(25) | Description(72) | Reference(28) | OrigAmt(28) | SGD(21)
+    const cols = [
+      { label: '#',           w: 8,  align: 'center' },
+      { label: 'Date',        w: 25, align: 'left'   },
+      { label: 'Description', w: 72, align: 'left'   },
+      { label: 'Reference',   w: 28, align: 'left'   },
+      { label: 'Orig. Amt',   w: 28, align: 'right'  },
+      { label: 'SGD',         w: 21, align: 'right'  },
+    ];
+    // Compute X positions
+    let cx = margin;
+    cols.forEach(c => { c.x = cx; cx += c.w; });
+
+    function drawCell(col, y, rowH, text, bold=false, bgColor=null) {
+      if (bgColor) {
+        doc.setFillColor(...bgColor);
+        doc.rect(col.x, y, col.w, rowH, 'F');
+      }
+      doc.setFont('helvetica', bold ? 'bold' : 'normal');
+      let tx, align = col.align;
+      if (align === 'right') tx = col.x + col.w - 1.5;
+      else if (align === 'center') tx = col.x + col.w / 2;
+      else tx = col.x + 1.5;
+      // Truncate text to fit column
+      const maxChars = Math.floor(col.w / 2.1);
+      if (text && text.length > maxChars) text = text.substring(0, maxChars - 2) + '..';
+      doc.text(String(text || ''), tx, y + rowH * 0.65, { align });
+    }
 
     // ── Header ──
     doc.setFillColor(26, 92, 26);
-    doc.rect(0, 0, W, 28, 'F');
+    doc.rect(0, 0, W, 26, 'F');
     doc.setTextColor(255, 255, 255);
-    doc.setFontSize(18);
-    doc.setFont('helvetica', 'bold');
-    doc.text('PAYMENT VOUCHER', margin, 12);
-    doc.setFontSize(9);
-    doc.setFont('helvetica', 'normal');
-    doc.text('Redington (India) Ltd – ASEAN', margin, 18);
-    doc.text('Confidential – Internal Use Only', margin, 23);
+    doc.setFontSize(16); doc.setFont('helvetica', 'bold');
+    doc.text('PAYMENT VOUCHER', margin, 11);
+    doc.setFontSize(8); doc.setFont('helvetica', 'normal');
+    doc.text('Redington (India) Ltd – ASEAN  ·  Confidential', margin, 17);
+    doc.text('Sales Head ASEAN', margin, 22);
 
-    // PV number top right
     const pvNum = document.getElementById('pv-num').value;
     const pvMonth = document.getElementById('pv-month').value;
-    doc.setFontSize(11);
-    doc.setFont('helvetica', 'bold');
-    doc.text(pvNum, W - margin, 12, { align: 'right' });
-    doc.setFontSize(9);
-    doc.setFont('helvetica', 'normal');
-    doc.text(pvMonth, W - margin, 18, { align: 'right' });
+    doc.setFontSize(13); doc.setFont('helvetica', 'bold');
+    doc.text(pvNum, W - margin, 11, { align: 'right' });
+    doc.setFontSize(9); doc.setFont('helvetica', 'normal');
+    doc.text(pvMonth, W - margin, 17, { align: 'right' });
 
-    // ── Meta fields ──
-    let y = 36;
+    // ── Meta grid ──
+    let y = 32;
     doc.setTextColor(30, 30, 30);
-    doc.setDrawColor(220, 220, 220);
-    doc.setLineWidth(0.3);
-
-    const metaFields = [
+    const half = contentW / 2;
+    const metaRows = [
       ['Voucher No.', pvNum, 'Pay To', 'Ivan Ong'],
       ['Period', pvMonth, 'Department', 'Redington ASEAN'],
-      ['Date Submitted', new Date().toLocaleDateString('en-SG', {day:'2-digit',month:'short',year:'numeric'}), 'Position', 'Sales Head ASEAN'],
+      ['Date Submitted', new Date().toLocaleDateString('en-SG',{day:'2-digit',month:'long',year:'numeric'}), 'Position', 'Sales Head ASEAN'],
     ];
-
-    metaFields.forEach(([l1, v1, l2, v2]) => {
-      const col1X = margin, col2X = margin + contentW / 2 + 5;
-      doc.setFontSize(8); doc.setFont('helvetica', 'normal'); doc.setTextColor(120,120,120);
-      doc.text(l1, col1X, y);
-      doc.text(l2, col2X, y);
-      doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(20,20,20);
-      doc.text(v1, col1X, y + 5);
-      doc.text(v2, col2X, y + 5);
-      doc.line(col1X, y + 8, col1X + contentW/2 - 5, y + 8);
-      doc.line(col2X, y + 8, col2X + contentW/2 - 5, y + 8);
-      y += 13;
+    metaRows.forEach(([l1,v1,l2,v2]) => {
+      doc.setFontSize(7.5); doc.setFont('helvetica','normal'); doc.setTextColor(130,130,130);
+      doc.text(l1, margin, y);
+      doc.text(l2, margin + half + 4, y);
+      doc.setFontSize(10); doc.setFont('helvetica','bold'); doc.setTextColor(20,20,20);
+      doc.text(v1, margin, y+5);
+      doc.text(v2, margin + half + 4, y+5);
+      doc.setDrawColor(210,210,210); doc.setLineWidth(0.25);
+      doc.line(margin, y+8, margin+half-4, y+8);
+      doc.line(margin+half+4, y+8, margin+contentW, y+8);
+      y += 12;
     });
 
-    // ── Table ──
-    y += 4;
-    const colW = [8, 22, 75, 30, 28, 22];
-    const colX = [margin];
-    for (let i = 0; i < colW.length - 1; i++) colX.push(colX[i] + colW[i]);
-    const headers = ['#', 'Date', 'Description', 'Reference', 'Original Amt', 'SGD'];
-
-    // Table header
+    // ── Table header ──
+    y += 3;
+    const rowH = 8;
     doc.setFillColor(26, 92, 26);
-    doc.rect(margin, y, contentW, 8, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'bold');
-    headers.forEach((h, i) => {
-      const align = i >= 4 ? 'right' : 'left';
-      const x = align === 'right' ? colX[i] + colW[i] - 1 : colX[i] + 1;
-      doc.text(h, x, y + 5.5, { align });
-    });
-    y += 8;
+    doc.rect(margin, y, contentW, rowH, 'F');
+    doc.setTextColor(255,255,255); doc.setFontSize(8); doc.setFont('helvetica','bold');
+    cols.forEach(c => drawCell(c, y, rowH, c.label, true));
+    // Draw vertical dividers in header
+    doc.setDrawColor(255,255,255); doc.setLineWidth(0.2);
+    let dvx = margin;
+    cols.slice(0,-1).forEach(c => { dvx += c.w; doc.line(dvx, y, dvx, y+rowH); });
+    y += rowH;
 
-    // Table rows
-    const total = items.reduce((s, i) => s + i.sgd, 0);
+    // ── Table rows ──
+    const total = items.reduce((s,i) => s + i.sgd, 0);
     items.forEach((item, idx) => {
-      const rowH = 9;
-      // Alternate row background
-      if (idx % 2 === 1) {
-        doc.setFillColor(245, 250, 245);
-        doc.rect(margin, y, contentW, rowH, 'F');
-      }
-      doc.setTextColor(30, 30, 30);
-      doc.setFontSize(8);
-      doc.setFont('helvetica', 'normal');
-
+      const isAlt = idx % 2 === 1;
+      const bg = isAlt ? [245,250,245] : [255,255,255];
+      // Row background
+      doc.setFillColor(...bg);
+      doc.rect(margin, y, contentW, rowH, 'F');
       // Row border
-      doc.setDrawColor(220, 220, 220);
-      doc.setLineWidth(0.2);
+      doc.setDrawColor(220,220,220); doc.setLineWidth(0.2);
       doc.rect(margin, y, contentW, rowH, 'S');
+      // Vertical dividers
+      doc.setDrawColor(220,220,220);
+      let vx = margin;
+      cols.slice(0,-1).forEach(c => { vx += c.w; doc.line(vx, y, vx, y+rowH); });
 
-      const vals = [
-        String(idx + 1),
-        item.date || '',
-        item.desc,
-        item.ref || '',
-        item.currency !== 'SGD' ? `${item.currency} ${Number(item.amount).toLocaleString('en', {minimumFractionDigits:0,maximumFractionDigits:0})}` : `SGD ${Number(item.amount).toFixed(2)}`,
-        `S$${item.sgd.toFixed(2)}`
-      ];
-
-      vals.forEach((v, i) => {
-        const align = i >= 4 ? 'right' : 'left';
-        const x = align === 'right' ? colX[i] + colW[i] - 1 : colX[i] + 1;
-        // Truncate long descriptions
-        let text = v;
-        if (i === 2 && v.length > 45) text = v.substring(0, 42) + '...';
-        if (i === 3 && v.length > 18) text = v.substring(0, 15) + '...';
-        doc.text(text, x, y + 6, { align });
-      });
+      doc.setTextColor(30,30,30); doc.setFontSize(8);
+      const origAmt = item.currency !== 'SGD'
+        ? `${item.currency} ${Number(item.amount).toLocaleString('en',{maximumFractionDigits:0})}`
+        : `SGD ${Number(item.amount).toFixed(2)}`;
+      const vals = [idx+1, item.date||'', item.desc, item.ref||'', origAmt, `S$${item.sgd.toFixed(2)}`];
+      cols.forEach((c,i) => drawCell(c, y, rowH, vals[i]));
       y += rowH;
     });
 
-    // Total row
-    doc.setFillColor(26, 92, 26);
-    doc.rect(margin, y, contentW, 9, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(9);
-    doc.text('TOTAL (SGD)', colX[4] - 1, y + 6, { align: 'right' });
-    doc.text(`S$${total.toFixed(2)}`, colX[5] + colW[5] - 1, y + 6, { align: 'right' });
-    y += 9;
+    // ── Total row ──
+    doc.setFillColor(26,92,26);
+    doc.rect(margin, y, contentW, rowH+1, 'F');
+    doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(9);
+    doc.text('TOTAL (SGD)', cols[4].x - 1.5, y + (rowH+1)*0.65, { align:'right' });
+    doc.text(`S$${total.toFixed(2)}`, cols[5].x + cols[5].w - 1.5, y + (rowH+1)*0.65, { align:'right' });
+    y += rowH + 1;
 
-    // Exchange rate note
-    y += 5;
-    doc.setTextColor(100, 100, 100);
-    doc.setFontSize(7.5);
-    doc.setFont('helvetica', 'italic');
-    const rateNote = Object.entries(rates)
-      .filter(([cur]) => cur !== 'SGD' && items.some(i => i.currency === cur))
-      .map(([cur, rate]) => `1 ${cur} = SGD ${rate.toFixed(6)}`)
-      .join('  |  ');
+    // ── Exchange rate note ──
+    y += 4;
+    doc.setTextColor(100,100,100); doc.setFontSize(7.5); doc.setFont('helvetica','italic');
+    const usedCurrencies = [...new Set(items.map(i=>i.currency).filter(c=>c!=='SGD'))];
+    const rateNote = usedCurrencies.map(cur => `1 ${cur} = SGD ${(rates[cur]||0).toFixed(6)}`).join('  |  ');
     if (rateNote) doc.text('Exchange rates applied: ' + rateNote, margin, y);
 
     // ── Signatures ──
-    y += 16;
-    doc.setDrawColor(180, 180, 180);
-    doc.setLineWidth(0.4);
-    doc.setTextColor(30, 30, 30);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(9);
-
-    const sigCols = [margin, margin + contentW/3, margin + (contentW/3)*2];
-    const sigLabels = ['Prepared By', 'Approved By', 'Acknowledged By'];
-    const sigNames = ['Ivan Ong', 'Prabhu K', ''];
-
-    sigCols.forEach((x, i) => {
-      const colEnd = x + contentW/3 - 8;
-      doc.text(sigLabels[i], x, y);
-      doc.line(x, y + 18, colEnd, y + 18);
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(8);
-      if (sigNames[i]) doc.text(sigNames[i], x, y + 23);
-      doc.text('Date: ___________', x, y + 29);
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(9);
+    y += 14;
+    doc.setDrawColor(180,180,180); doc.setLineWidth(0.4);
+    doc.setTextColor(30,30,30); doc.setFont('helvetica','bold'); doc.setFontSize(9);
+    const sigW = contentW / 3 - 6;
+    const sigPositions = [margin, margin+contentW/3, margin+(contentW/3)*2];
+    const sigLabels = ['Prepared By','Approved By','Acknowledged By'];
+    const sigNames  = ['Ivan Ong','Prabhu K',''];
+    sigPositions.forEach((sx,i) => {
+      doc.text(sigLabels[i], sx, y);
+      doc.line(sx, y+17, sx+sigW, y+17);
+      doc.setFont('helvetica','normal'); doc.setFontSize(8);
+      if(sigNames[i]) doc.text(sigNames[i], sx, y+22);
+      doc.text('Date: ___________', sx, y+28);
+      doc.setFont('helvetica','bold'); doc.setFontSize(9);
     });
 
     // ── Footer ──
-    doc.setFillColor(240, 248, 240);
-    doc.rect(0, H - 10, W, 10, 'F');
-    doc.setTextColor(100, 140, 100);
-    doc.setFontSize(7.5);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`${pvNum} · ${pvMonth} · Generated ${new Date().toLocaleDateString('en-SG')} · Redington ASEAN`, W/2, H - 4, { align: 'center' });
+    doc.setFillColor(240,248,240);
+    doc.rect(0, H-10, W, 10, 'F');
+    doc.setTextColor(100,140,100); doc.setFontSize(7.5); doc.setFont('helvetica','normal');
+    doc.text(`${pvNum} · ${pvMonth} · Generated ${new Date().toLocaleDateString('en-SG')} · Redington ASEAN`, W/2, H-4, {align:'center'});
 
-    // ── Receipt pages ──
+    // ── Receipt image pages ──
     const itemsWithThumbs = items.filter(i => i.thumb && i.thumb.startsWith('data:image'));
     for (let i = 0; i < itemsWithThumbs.length; i++) {
       const item = itemsWithThumbs[i];
       doc.addPage();
-      doc.setFillColor(26, 92, 26);
-      doc.rect(0, 0, W, 16, 'F');
-      doc.setTextColor(255, 255, 255);
-      doc.setFontSize(10);
-      doc.setFont('helvetica', 'bold');
-      doc.text(`Receipt ${i + 1} of ${itemsWithThumbs.length} – ${item.desc}`, margin, 10);
 
+      // Page header
+      doc.setFillColor(26,92,26);
+      doc.rect(0, 0, W, 16, 'F');
+      doc.setTextColor(255,255,255); doc.setFontSize(9); doc.setFont('helvetica','bold');
+      doc.text(`Receipt ${i+1} of ${itemsWithThumbs.length}`, margin, 7);
+      doc.setFont('helvetica','normal'); doc.setFontSize(8);
+      // Truncate long desc for header
+      const hDesc = item.desc.length > 60 ? item.desc.substring(0,57)+'...' : item.desc;
+      doc.text(hDesc, margin, 13);
+
+      // Receipt meta
+      doc.setTextColor(30,30,30); doc.setFontSize(8);
+      doc.setFont('helvetica','bold'); doc.text('Date:', margin, 23);
+      doc.setFont('helvetica','normal'); doc.text(item.date||'—', margin+12, 23);
+      doc.setFont('helvetica','bold'); doc.text('Amount:', margin+50, 23);
+      const dispAmt = item.currency!=='SGD' ? `${item.currency} ${Number(item.amount).toLocaleString()} (S$${item.sgd.toFixed(2)})` : `S$${item.sgd.toFixed(2)}`;
+      doc.setFont('helvetica','normal'); doc.text(dispAmt, margin+68, 23);
+      if(item.ref) {
+        doc.setFont('helvetica','bold'); doc.text('Ref:', margin+130, 23);
+        doc.setFont('helvetica','normal'); doc.text(item.ref, margin+140, 23);
+      }
+      doc.setDrawColor(200,200,200); doc.setLineWidth(0.3);
+      doc.line(margin, 26, W-margin, 26);
+
+      // Image — fit to page with max height
       try {
         const mime = item.thumb.split(';')[0].split(':')[1];
         const imgType = mime.includes('png') ? 'PNG' : 'JPEG';
-        // Fit image in page
-        const imgW = contentW;
-        const imgH = Math.min(240, H - 36);
-        doc.addImage(item.thumb, imgType, margin, 22, imgW, imgH, '', 'FAST');
-      } catch(e) {}
+        // Get image dimensions to maintain aspect ratio
+        const imgEl = new Image();
+        await new Promise(resolve => {
+          imgEl.onload = resolve;
+          imgEl.src = item.thumb;
+        });
+        const imgNatW = imgEl.naturalWidth;
+        const imgNatH = imgEl.naturalHeight;
+        const maxW = contentW;
+        const maxH = H - 44; // leave room for header and footer
+        let drawW = maxW;
+        let drawH = (imgNatH / imgNatW) * drawW;
+        if (drawH > maxH) { drawH = maxH; drawW = (imgNatW / imgNatH) * drawH; }
+        const imgX = margin + (contentW - drawW) / 2;
+        doc.addImage(item.thumb, imgType, imgX, 30, drawW, drawH, '', 'FAST');
+      } catch(e) { 
+        doc.setTextColor(150,150,150); doc.setFontSize(10);
+        doc.text('[Receipt image could not be rendered]', W/2, H/2, {align:'center'});
+      }
 
-      doc.setFillColor(240, 248, 240);
-      doc.rect(0, H - 10, W, 10, 'F');
-      doc.setTextColor(100, 140, 100);
-      doc.setFontSize(7.5);
-      doc.setFont('helvetica', 'normal');
-      doc.text(`${pvNum} · Receipt ${i+1}: ${item.desc} · ${item.date || ''}`, W/2, H - 4, { align: 'center' });
+      // Page footer
+      doc.setFillColor(240,248,240);
+      doc.rect(0, H-10, W, 10, 'F');
+      doc.setTextColor(100,140,100); doc.setFontSize(7.5); doc.setFont('helvetica','normal');
+      doc.text(`${pvNum} · Receipt ${i+1}: ${item.desc.substring(0,50)}`, W/2, H-4, {align:'center'});
     }
 
-    // Save
-    const filename = `${pvNum}_Ivan_Ong_${pvMonth.replace(' ', '_')}.pdf`;
+    const filename = `${pvNum}_Ivan_Ong_${pvMonth.replace(' ','_')}.pdf`;
     doc.save(filename);
-    showStatus('pdf-status', `✓ ${filename} downloaded successfully!`, 'success');
+    showStatus('pdf-status', `✓ ${filename} downloaded! (${items.length} items + ${itemsWithThumbs.length} receipts)`, 'success');
   } catch(e) {
     showStatus('pdf-status', 'PDF generation failed: ' + e.message, 'error');
     console.error(e);
