@@ -331,26 +331,28 @@ async function extractReceipt() {
   showStatus('extract-status', 'AI is reading your receipt...', 'info');
 
   try {
-    const mime = currentImageMime.startsWith('image/') ? currentImageMime : 'image/jpeg';
+    // Build content array based on file type
+    let contentArr = [];
+    if (currentImageMime === 'application/pdf') {
+      contentArr = [
+        { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: currentImageBase64 } },
+        { type: 'text', text: 'Extract expense details from this receipt/document. Return ONLY a raw JSON object with these fields: description (concise expense description), date (DD MMM YYYY format), amount (numeric only, no currency symbol), currency (SGD/IDR/THB/MYR/PHP/VND/USD), reference (booking ID or empty string). No markdown, no explanation, just the raw JSON.' }
+      ];
+    } else {
+      const mime = currentImageMime.startsWith('image/') ? currentImageMime : 'image/jpeg';
+      contentArr = [
+        { type: 'image', source: { type: 'base64', media_type: mime, data: currentImageBase64 } },
+        { type: 'text', text: 'Extract expense details from this receipt. Return ONLY a raw JSON object with these fields: description (concise expense description e.g. "Grab Car - Hotel to Airport", "Dinner at Restaurant Name"), date (DD MMM YYYY format), amount (numeric only, no currency symbol), currency (SGD/IDR/THB/MYR/PHP/VND/USD), reference (booking ID or empty string). No markdown, no explanation, just the raw JSON.' }
+      ];
+    }
+
     const resp = await fetch(WORKER_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
         max_tokens: 1000,
-        messages: [{
-          role: 'user',
-          content: [
-            { type: 'image', source: { type: 'base64', media_type: mime, data: currentImageBase64 } },
-            { type: 'text', text: `Extract expense details from this receipt. Return ONLY a raw JSON object with these fields:
-- description: concise expense description (e.g. "Grab Car – Hotel → Airport", "Dinner at Restaurant Name", "Hotel accommodation", "M1 Mobile Bill")
-- date: date in format "DD MMM YYYY" (e.g. "15 May 2026")
-- amount: numeric amount only (no currency symbol)
-- currency: currency code (SGD, IDR, THB, MYR, PHP, VND, USD)
-- reference: any booking ID, receipt number, or reference code (empty string if none)
-No markdown, no explanation, just the raw JSON.` }
-          ]
-        }]
+        messages: [{ role: 'user', content: contentArr }]
       })
     });
 
