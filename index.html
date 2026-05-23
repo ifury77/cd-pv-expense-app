@@ -376,37 +376,68 @@ async function extractReceipt() {
 
     if (!resp.ok) throw new Error('API error ' + resp.status);
     const data = await resp.json();
-    console.log('API response:', JSON.stringify(data).substring(0, 300));
     const text = (data.content || []).map(b => b.text || '').join('');
-    console.log('Extracted text:', text.substring(0, 200));
-    
-    // More robust JSON extraction
-    let json = {};
-    try {
-      // Try to find JSON object in response
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        json = JSON.parse(jsonMatch[0]);
-      } else {
-        json = JSON.parse(text.replace(/```json|```/g, '').trim());
-      }
-    } catch(parseErr) {
-      console.error('JSON parse error:', parseErr.message, 'text was:', text);
-      throw new Error('Could not parse AI response: ' + text.substring(0, 100));
-    }
+    console.log('Extracted text:', text.substring(0, 300));
 
-    console.log('Parsed JSON:', json);
-    document.getElementById('f-desc').value = json.description || json.desc || '';
-    document.getElementById('f-date').value = json.date || '';
-    document.getElementById('f-amount').value = json.amount || json.total || '';
-    document.getElementById('f-ref').value = json.reference || json.ref || '';
-    const cur = ((json.currency || json.Currency || 'SGD') + '').toUpperCase();
+    // Strip markdown fences and parse
+    const clean = text.replace(/```json|```/gi, '').trim();
+    let parsed;
+    try { parsed = JSON.parse(clean); } 
+    catch(e) { throw new Error('Could not parse AI response: ' + text.substring(0, 80)); }
+
+    // Handle both array (multiple items) and single object
+    const jsonItems = Array.isArray(parsed) ? parsed : [parsed];
+    console.log('Parsed', jsonItems.length, 'item(s):', jsonItems);
+
     const validCur = ['SGD','IDR','THB','MYR','PHP','VND','USD'];
-    document.getElementById('f-currency').value = validCur.includes(cur) ? cur : 'SGD';
-    updateSGD();
-    document.getElementById('item-form-card').style.display = 'block';
-    document.getElementById('item-form-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
-    showStatus('extract-status', '✓ Extracted — review below then click Add to Voucher', 'success');
+
+    if (jsonItems.length === 1) {
+      // Single item — fill form as before
+      const j = jsonItems[0];
+      document.getElementById('f-desc').value = j.description || '';
+      document.getElementById('f-date').value = j.date || '';
+      document.getElementById('f-amount').value = j.amount || '';
+      document.getElementById('f-ref').value = j.reference || '';
+      const cur = ((j.currency || 'SGD') + '').toUpperCase();
+      document.getElementById('f-currency').value = validCur.includes(cur) ? cur : 'SGD';
+      updateSGD();
+      document.getElementById('item-form-card').style.display = 'block';
+      document.getElementById('item-form-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      showStatus('extract-status', '✓ Extracted — review below then click Add to Voucher', 'success');
+    } else {
+      // Multiple items (e.g. multi-night hotel) — add all at once
+      const rate = rates;
+      let addedCount = 0;
+      const thumbSnap = pendingThumb || currentThumb || null;
+      jsonItems.forEach((j, idx) => {
+        const cur = ((j.currency || 'SGD') + '').toUpperCase();
+        const currency = validCur.includes(cur) ? cur : 'SGD';
+        const amount = parseFloat(j.amount) || 0;
+        if (!amount) return;
+        const sgd = amount * (rates[currency] || 1);
+        const item = {
+          id: Date.now() + idx,
+          desc: j.description || '',
+          date: j.date || '',
+          currency, amount,
+          ref: j.reference || '',
+          sgd,
+          rate: rates[currency] || 1,
+          thumb: idx === 0 ? thumbSnap : null  // attach image to first item only
+        };
+        items.push(item);
+        addedCount++;
+      });
+      pendingThumb = null;
+      const ts = document.getElementById('thumb-store');
+      if (ts) { ts.src = ''; ts.removeAttribute('data-ready'); }
+      saveItems();
+      renderItems();
+      clearReceipt();
+      hideStatus('extract-status');
+      document.getElementById('item-form-card').style.display = 'none';
+      showStatus('extract-status', '✓ Added ' + addedCount + ' items automatically from this receipt!', 'success');
+    }
   } catch(e) {
     showStatus('extract-status', 'Extraction failed: ' + e.message + '. Fill in manually below.', 'error');
     document.getElementById('item-form-card').style.display = 'block';
