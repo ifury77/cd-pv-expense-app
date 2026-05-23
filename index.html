@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="PV Expense">
 <title>PV Expense App – Redington ASEAN</title>
-<!-- v9 -->
+<!-- v10 -->
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f0f4f0; min-height: 100vh; }
@@ -87,7 +87,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
     <p>Redington ASEAN · Ivan Ong</p>
   </div>
   <div class="pv-badge" id="pv-badge">PV5</div>
-  <div style="font-size:10px;opacity:0.6;">v9</div>
+  <div style="font-size:10px;opacity:0.6;">v10</div>
 </div>
 
 <div class="container">
@@ -338,9 +338,20 @@ function handleReceipt(input) {
       }).catch(err => {
         console.warn('Compression failed, keeping original:', err.message);
       });
+    } else if (file.type === 'application/pdf') {
+      // Store PDF dataUrl for attachment
+      const pdfDataUrl = dataUrl;
+      currentThumb = pdfDataUrl;
+      pendingThumb = pdfDataUrl;
+      const ta = document.getElementById('thumb-store');
+      if (ta) ta.value = pdfDataUrl;
+      thumbReady = true;
+      document.getElementById('preview-img').style.display = 'none';
+      document.getElementById('thumb-status').style.display = 'block';
+      document.getElementById('thumb-status').textContent = '📄 PDF ready to attach';
+      console.log('PDF stored as thumb, len:', pdfDataUrl.length);
     } else {
       currentThumb = null; pendingThumb = null; thumbReady = true;
-      document.getElementById('preview-img').style.display = 'none';
     }
     document.getElementById('extract-row').style.display = 'flex';
     hideStatus('extract-status');
@@ -692,11 +703,13 @@ async function generatePDF() {
     doc.text(pvNum+' · '+pvMonth+' · Generated '+new Date().toLocaleDateString('en-SG')+' · Redington Distribution Pte Ltd', W/2, H-4, {align:'center'});
 
     // ── Receipt pages ──
-    const withThumbs = items.filter(i => i.thumb && i.thumb.startsWith('data:image'));
+    const withThumbs = items.filter(i => i.thumb);
     console.log('Receipt pages to add:', withThumbs.length, 'of', items.length, 'items');
 
     for (let i = 0; i < withThumbs.length; i++) {
       const item = withThumbs[i];
+      const isPDF = item.thumb.startsWith('data:application/pdf');
+      const isImage = item.thumb.startsWith('data:image');
       doc.addPage();
 
       // Header
@@ -722,16 +735,28 @@ async function generatePDF() {
       doc.setDrawColor(180,180,180); doc.setLineWidth(0.3);
       doc.line(margin, 26, W-margin, 26);
 
-      // Image
-      try {
-        const imgType = item.thumb.includes('image/png') ? 'PNG' : 'JPEG';
-        // height=0 tells jsPDF to auto-calculate height from aspect ratio
-        doc.addImage(item.thumb, imgType, margin, 30, contentW, 0);
-        console.log('Receipt', i+1, 'image added OK');
-      } catch(e) {
-        console.error('Receipt', i+1, 'addImage error:', e.message);
-        doc.setTextColor(150,150,150); doc.setFontSize(11);
-        doc.text('Image error: '+e.message, margin, 60);
+      if (isImage) {
+        try {
+          const imgType = item.thumb.includes('image/png') ? 'PNG' : 'JPEG';
+          doc.addImage(item.thumb, imgType, margin, 30, contentW, 0);
+          console.log('Receipt', i+1, 'image added OK');
+        } catch(e) {
+          console.error('Receipt', i+1, 'addImage error:', e.message);
+          doc.setTextColor(150,150,150); doc.setFontSize(10);
+          doc.text('Image render error: '+e.message, margin, 60);
+        }
+      } else if (isPDF) {
+        // PDF receipts: show note and reference info
+        doc.setTextColor(80,80,80); doc.setFontSize(11); doc.setFont('helvetica','bold');
+        doc.text('📄 PDF Receipt', margin, 50);
+        doc.setFont('helvetica','normal'); doc.setFontSize(9);
+        doc.text('This receipt was submitted as a PDF document.', margin, 60);
+        doc.text('Please refer to the original PDF file for the full receipt.', margin, 68);
+        doc.setFontSize(8); doc.setTextColor(120,120,120);
+        doc.text('Description: '+(item.desc||''), margin, 82);
+        doc.text('Date: '+(item.date||''), margin, 90);
+        doc.text('Amount: '+amt, margin, 98);
+        if (item.ref) doc.text('Reference: '+item.ref, margin, 106);
       }
 
       // Footer
