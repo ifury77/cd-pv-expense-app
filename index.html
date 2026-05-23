@@ -650,28 +650,22 @@ async function generatePDF() {
     doc.text(pvNum + ' · ' + pvMonth + ' · Generated ' + new Date().toLocaleDateString('en-SG') + ' · Redington Distribution Pte Ltd', W/2, H-4, {align:'center'});
 
     // ── Receipt image pages ──
-    // Pre-load all images to get natural dimensions
-    const itemsWithThumbs = items.filter(i => thumbStore[i.id] && thumbStore[i.id].startsWith('data:image'));
+    const itemsWithThumbs = items.filter(i => thumbStore[i.id]);
+    console.log('Items with thumbs:', itemsWithThumbs.length, 'of', items.length);
+    console.log('ThumbStore keys:', Object.keys(thumbStore));
 
-    // Load all images first
-    const loadedImages = await Promise.all(itemsWithThumbs.map(item => {
-      return new Promise((resolve) => {
-        const img = new Image();
-        img.onload = () => resolve({ item, img, ok: true });
-        img.onerror = () => resolve({ item, img: null, ok: false });
-        img.src = thumbStore[item.id];
-      });
-    }));
+    for (let i = 0; i < itemsWithThumbs.length; i++) {
+      const item = itemsWithThumbs[i];
+      const dataUrl = thumbStore[item.id];
+      console.log('Processing receipt', i+1, 'dataUrl length:', dataUrl ? dataUrl.length : 0);
 
-    for (let i = 0; i < loadedImages.length; i++) {
-      const { item, img, ok } = loadedImages[i];
       doc.addPage();
 
       // Page header
       doc.setFillColor(26,92,26);
       doc.rect(0, 0, W, 16, 'F');
       doc.setTextColor(255,255,255); doc.setFontSize(9); doc.setFont('helvetica','bold');
-      doc.text('Receipt ' + (i+1) + ' of ' + loadedImages.length, margin, 7);
+      doc.text('Receipt ' + (i+1) + ' of ' + itemsWithThumbs.length, margin, 7);
       doc.setFont('helvetica','normal'); doc.setFontSize(8);
       const hDesc = item.desc.length > 60 ? item.desc.substring(0,57)+'...' : item.desc;
       doc.text(hDesc, margin, 13);
@@ -692,25 +686,22 @@ async function generatePDF() {
       doc.setDrawColor(200,200,200); doc.setLineWidth(0.3);
       doc.line(margin, 26, W-margin, 26);
 
-      // Draw image
-      if (ok && img) {
+      // Draw image directly from dataURL - jsPDF accepts dataURL strings natively
+      if (dataUrl && dataUrl.startsWith('data:image')) {
         try {
-          const mime = thumbStore[item.id].split(';')[0].split(':')[1];
+          const mime = dataUrl.split(';')[0].split(':')[1];
           const imgType = mime.includes('png') ? 'PNG' : 'JPEG';
-          const maxW = contentW;
-          const maxH = H - 46;
-          let drawW = maxW;
-          let drawH = (img.naturalHeight / img.naturalWidth) * drawW;
-          if (drawH > maxH) { drawH = maxH; drawW = (img.naturalWidth / img.naturalHeight) * drawH; }
-          const imgX = margin + (contentW - drawW) / 2;
-          doc.addImage(img, imgType, imgX, 30, drawW, drawH, 'receipt_'+i, 'FAST');
+          // Use jsPDF's built-in image size detection
+          doc.addImage(dataUrl, imgType, margin, 30, contentW, 0);
+          console.log('Image added successfully for receipt', i+1);
         } catch(e) {
+          console.error('addImage error:', e);
           doc.setTextColor(150,150,150); doc.setFontSize(10);
-          doc.text('[Image render error: ' + e.message + ']', W/2, H/2, {align:'center'});
+          doc.text('Error: ' + e.message, margin, H/2);
         }
       } else {
         doc.setTextColor(150,150,150); doc.setFontSize(10);
-        doc.text('[Receipt image could not be loaded]', W/2, H/2, {align:'center'});
+        doc.text('[No image stored for this receipt]', W/2, H/2, {align:'center'});
       }
 
       // Page footer
