@@ -318,12 +318,14 @@ function handleReceipt(input) {
   const reader = new FileReader();
   reader.onload = (e) => {
     const dataUrl = e.target.result;
+    console.log('reader.onload fired, file.type:', file.type, 'dataUrl len:', dataUrl.length);
     currentBase64 = dataUrl.split(',')[1];
 
-    if (file.type.startsWith('image/')) {
+    if (!file.type || file.type.startsWith('image/') || (!file.type.includes('pdf') && dataUrl.startsWith('data:image'))) {
       document.getElementById('preview-img').src = dataUrl;
       document.getElementById('preview-img').style.display = 'block';
       // Set thumb immediately with original (synchronous)
+      console.log('About to call setThumb with len:', dataUrl.length);
       setThumb(dataUrl);
       // Then try to compress in background (non-blocking, updates if succeeds)
       compressImage(dataUrl).then(compressed => {
